@@ -159,6 +159,15 @@ h2{font-family:'Bowlby One',Impact,sans-serif;font-weight:400;font-size:max(28px
 .stats .l{text-align:right}.stats .r{text-align:left}.stats .m{color:#cfc7f5;font-weight:500}
 .row{display:flex;gap:calc(var(--u)*14px);flex-wrap:wrap;justify-content:center}
 @media (max-width:760px){ .frame:not(.compact) .panel{grid-template-columns:1fr} .frame:not(.compact) .plist small{display:none} }
+.nameIn{font:inherit;font-weight:800;color:#fff;background:rgba(255,255,255,.09);border:2px solid transparent;border-radius:calc(var(--u)*14px);padding:.45em .8em;width:min(100%,14em);-webkit-user-select:text;user-select:text}
+.nameIn:focus{outline:none;border-color:#ffc61a}
+.nameIn::placeholder{color:#8f87c4}
+.cmt{margin:.2em 0 .4em;max-width:30em;font-style:italic;color:#e6defc;line-height:1.35}
+.sharepane{position:absolute;inset:0;z-index:5;display:grid;background:rgba(10,6,28,.92);padding:10px;overflow:hidden}
+.sharepane .sc{display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;min-height:0}
+.sharepane img{flex:1 1 0;min-height:0;max-width:100%;width:auto;object-fit:contain;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.sharepane .row{flex:0 0 auto}
+.sharepane .btn{margin-top:0;font-size:max(14px,calc(var(--u)*24px))}
 .pdesc{display:none}
 .frame.compact .overlay{padding:10px 14px}
 .frame.compact .panel{grid-template-columns:1fr 1.25fr;gap:16px;width:100%}
@@ -204,6 +213,7 @@ h2{font-family:'Bowlby One',Impact,sans-serif;font-weight:400;font-size:max(28px
         <div>
           <h1>Inposibal</h1>
           <p class="tag">Four-a-side football with Ghanaian powers you have to earn. Win the ball, beat your man and play forward to build Morale, then spend it at the right moment.</p>
+          <label class="field">Your name<input id="nameIn" class="nameIn" maxlength="14" placeholder="Player" autocomplete="off" autocapitalize="words" spellcheck="false"></label>
           <div class="field">Opponent
             <div class="seg" id="segDiff" role="group" aria-label="Opponent strength">
               <button type="button" data-v="chill">Chill</button><button type="button" data-v="pro">Pro</button><button type="button" data-v="legend">Legend</button>
@@ -239,12 +249,14 @@ h2{font-family:'Bowlby One',Impact,sans-serif;font-weight:400;font-size:max(28px
       </div>
     </div>
 
+    <div class="overlay hidden sharepane" id="sharePane" style="display:none"><div class="sc"><img id="shareImg" alt="Match result card"><div class="row"><button class="btn" id="btnSend" type="button">Send it</button><button class="btn alt" id="btnShareClose" type="button">Close</button></div></div></div>
     <div class="overlay hidden" id="end">
       <div class="card">
         <div class="final" id="endTitle">Full time</div>
         <div class="final" id="endScore" style="font-size:max(26px,calc(var(--u)*56px))">0 - 0</div>
         <div class="stats" id="endStats"></div>
-        <div class="row"><button class="btn" id="btnAgain" type="button">Rematch</button><button class="btn alt" id="btnMenu" type="button">Change settings</button></div>
+        <p class="cmt" id="endCmt"></p>
+        <div class="row"><button class="btn" id="btnShare" type="button">Share</button><button class="btn" id="btnAgain" type="button">Rematch</button><button class="btn alt" id="btnMenu" type="button">Change settings</button></div>
       </div>
     </div>
   </div>
@@ -285,11 +297,11 @@ const DIFF={
  pro:{speed:.93,react:.28,acc:.74,shootRange:400,gkErr:26,tackle:.18,slide:.12,slideHit:.55,moraleUse:.7,powerTick:1,powerGap:3,timing:.6},
  legend:{speed:1,react:.14,acc:.9,shootRange:470,gkErr:10,tackle:.28,slide:.22,slideHit:.7,moraleUse:.9,powerTick:.7,powerGap:2,timing:.85}
 };
-const settings={diff:'pro',len:120,loadout:['shito','dumsor','trotro']};
+const settings={diff:'pro',len:120,loadout:['shito','dumsor','trotro'],name:''};
 let muted=false;
-try{const s=JSON.parse(localStorage.getItem('wildpitch')||'{}');if(DIFF[s.diff])settings.diff=s.diff;if([60,120,240].includes(s.len))settings.len=s.len;muted=!!s.muted;
+try{const s=JSON.parse(localStorage.getItem('wildpitch')||'{}');if(DIFF[s.diff])settings.diff=s.diff;if([60,120,240].includes(s.len))settings.len=s.len;muted=!!s.muted;if(typeof s.name==='string')settings.name=s.name.slice(0,14);
  if(Array.isArray(s.loadout)){const l=[...new Set(s.loadout.filter(id=>PW[id]))].slice(0,3);if(l.length===3&&!loadoutProblem(l))settings.loadout=l}}catch(e){}
-const saveSettings=()=>{try{localStorage.setItem('wildpitch',JSON.stringify({diff:settings.diff,len:settings.len,muted,loadout:settings.loadout}))}catch(e){}};
+const saveSettings=()=>{try{localStorage.setItem('wildpitch',JSON.stringify({diff:settings.diff,len:settings.len,name:settings.name,muted,loadout:settings.loadout}))}catch(e){}};
 function loadoutProblem(L){if(L.filter(id=>PW[id].tier==='heavy').length>1)return'Only one heavy power allowed.';
  if(L.length===3&&L.every(id=>PW[id].cat===PW[L[0]].cat))return'Mix at least two categories.';return''}
 function randomLoadout(){for(;;){const ids=POWERS.map(p=>p.id);for(let i=ids.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[ids[i],ids[j]]=[ids[j],ids[i]]}
@@ -330,7 +342,7 @@ function makePlayer(team,idx){const gk=idx===0;
  return{team,idx,gk,x:0,y:0,vx:0,vy:0,fx:team===0?1:-1,fy:0,dx:0,dy:0,base:gk?19:17,scale:1,r:gk?19:17,speed:gk?232:238,
   stun:0,giant:0,azonto:0,magnet:0,dash:0,dashX:0,dashY:0,heavy:0,cut:0,cutCD:0,azDX:0,azDY:0,azHold:0,azX:0,azY:0,azT:0,aiRel:0,slide:0,slideCD:0,recover:0,pickupLock:0,tackleCD:0,hitCD:0,protect:0,phase:Math.random()*6,charge:0,hold:0,think:0,err:0,errT:0,skin:SKIN[team][idx]}}
 function makeTeam(id){const t={id,score:0,players:[],loadout:[],rocket:0,morale:MOR_START,dr:{},lastUse:{},lock:0,wind:null,dumsor:0,sankofa:0,lastPass:null,pw:{},aiTimer:1.5,ctrl:null,chaser:null,swT:0,recv:null,recvT:0,recvArmed:false,recvPt:null,
-  stats:{shots:0,powers:0,poss:0,morale:0},color:id===0?'#ffc61a':'#e0245e',dark:id===0?'#9a6f00':'#7d0b31'};
+  stats:{shots:0,powers:0,poss:0,morale:0,used:{}},color:id===0?'#ffc61a':'#e0245e',dark:id===0?'#9a6f00':'#7d0b31'};
  POWERS.forEach(p=>t.pw[p.id]=0);for(let i=0;i<4;i++)t.players.push(makePlayer(id,i));return t}
 const teams=[makeTeam(0),makeTeam(1)],ALL=[...teams[0].players,...teams[1].players];
 const ball={x:CX,y:CY,vx:0,vy:0,r:BR,owner:null,rot:0,fire:0,lastTeam:0,shot:false,noEarn:false};
@@ -355,7 +367,7 @@ function setBig(text,color,holdMs){if(demo)return;if(bigLabel!==text){bigLabel=t
 function hideBig(){bigEl.classList.remove('show');bigLabel='';clearTimeout(bigTimer)}
 
 /* ---------- match flow ---------- */
-function resetTeams(){simClock=0;teams.forEach(t=>{t.score=0;t.rocket=0;t.ctrl=null;t.chaser=null;t.aiTimer=1.5;t.stats={shots:0,powers:0,poss:0,morale:0};
+function resetTeams(){simClock=0;teams.forEach(t=>{t.score=0;t.rocket=0;t.ctrl=null;t.chaser=null;t.aiTimer=1.5;t.stats={shots:0,powers:0,poss:0,morale:0,used:{}};
   t.morale=demo?rand(30,80):MOR_START;t.dr={};t.lastUse={};t.lock=0;t.wind=null;t.dumsor=0;t.sankofa=0;t.lastPass=null;
   t.loadout=(t.id===0&&!demo)?settings.loadout.slice():randomLoadout();
   POWERS.forEach(p=>t.pw[p.id]=0)})}
@@ -371,24 +383,39 @@ function setupKickoff(kt){kickTeam=kt;clearEffects();
  parts.length=0;rings.length=0;later.length=0;beat.o=null;beat.s.clear();
  if(!demo)teams[0].ctrl=teams[0].players[1];
  state='kickoff';stateT=demo?.8:2.3;timeScale=timeScaleTarget=1}
-const juju={rolled:false,active:false,balls:[],t:0,n:0,landed:0};
-function jujuReset(){juju.rolled=juju.active=false;juju.balls=[];juju.landed=0}
-function jujuCast(){const c=teams[1],h=teams[0],n=h.score-c.score+1;juju.active=true;juju.n=n;juju.landed=0;juju.balls=[];juju.t=0;
+const juju={rolled:false,active:false,balls:[],t:0,n:0,landed:0,used:false};
+let goalLog=[],reversals=0;
+function jujuReset(){goalLog=[];reversals=0;juju.used=false;juju.rolled=juju.active=false;juju.balls=[];juju.landed=0}
+function jujuCast(){juju.used=true;const c=teams[1],h=teams[0],n=h.score-c.score+1;juju.active=true;juju.n=n;juju.landed=0;juju.balls=[];juju.t=0;
  const src=c.players.filter(q=>!q.gk);for(let i=0;i<n;i++){const q=src[i%src.length];juju.balls.push({sx:q.x,sy:q.y,tx:PX0-14,ty:rand(GY0+20,GY1-20),delay:.9+i*.3,t:0,dur:.55,x:q.x,y:q.y,done:false,rot:0})}
  showBanner('CPU: JUJU!','#b86bff',2400);setBig('JUJU!','#b86bff',1400);SFX.dumsor();shake=Math.max(shake,reduceMotion?2:10);
  for(const q of src)ring(q.x,q.y,q.r+4,q.r+70,.9,'#b86bff')}
 function jujuUpdate(g){if(!juju.active)return;juju.t+=g;
  for(const b of juju.balls){if(b.done)continue;if(juju.t<b.delay){b.x=b.sx;b.y=b.sy;continue}b.t+=g;const k=Math.min(1,b.t/b.dur);b.x=b.sx+(b.tx-b.sx)*k;b.y=b.sy+(b.ty-b.sy)*k;b.rot+=g*30;
   if(Math.random()<.8)burst(b.x,b.y,1,{color:['#b86bff','#e6d0ff'],s0:20,s1:90,l0:.3,l1:.6});
-  if(k>=1){b.done=true;juju.landed++;teams[1].score++;SFX.goal();shake=Math.max(shake,reduceMotion?2:12);
+  if(k>=1){b.done=true;juju.landed++;teams[1].score++;goalLog.push([1,Math.round(settings.len-Math.max(0,matchT))]);SFX.goal();shake=Math.max(shake,reduceMotion?2:12);
    burst(PX0,b.ty,50,{color:['#b86bff','#fff','#ffc61a','#e0245e'],kind:'confetti',s0:80,s1:480,l0:1,l1:2,z0:4,z1:8,g:380,drag:.9,a:0,spread:1.4});ring(PX0,b.ty,10,200,.7,'#b86bff');floatText(PX0+60,b.ty,'GOAL','#b86bff')}}
  if(juju.landed>=juju.n&&juju.t>juju.balls[juju.balls.length-1].delay+.9){juju.active=false;matchT=0}}
-function startMatch(){jujuReset();demo=false;paused=false;sudden=false;matchT=settings.len;resetTeams();hideBig();bannerEl.classList.remove('show');
+function playerName(){return (settings.name||'').trim()||'Player'}
+function startMatch(){jujuReset();demo=false;document.querySelector('#hud .tm .n').textContent=playerName();paused=false;sudden=false;matchT=settings.len;resetTeams();hideBig();bannerEl.classList.remove('show');
  frameEl.classList.add('playing');$('menu').classList.add('hidden');$('end').classList.add('hidden');$('pause').classList.add('hidden');
  buildPowerBar();buildCpuLoad();setupKickoff(0);
  showBanner('CPU picked '+teams[1].loadout.map(id=>PW[id].name).join(', '),'#ff6b92',2600)}
 function startDemo(){jujuReset();demo=true;paused=false;sudden=false;matchT=999;resetTeams();hideBig();frameEl.classList.remove('playing');setupKickoff(Math.random()<.5?0:1)}
 function toMenu(){$('end').classList.add('hidden');$('pause').classList.add('hidden');$('menu').classList.remove('hidden');startDemo()}
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function matchComment(a,b,n){const d=a.score-b.score;let pool;
+ if(juju.used)pool=['The CPU used JUJU. '+n+' was robbed by spiritual forces. Please call VAR to the ancestors.','Lost to witchcraft. Technically not a skill issue.','JUJU at the last second. '+n+' would like to speak to the referee, the pastor and the herbalist.','The CPU said "I will not lose" and the universe said "okay".'];
+ else if(reversals>0&&d>=0)pool=['Sankofa: went back and fetched that goal. '+n+' bends time now.','Conceded, reversed it, carried on. '+n+' does not accept bad news.'];
+ else if(d>=4)pool=['Absolute scenes. The CPU is filing a complaint with the ministry.','Chale, that was not a match, that was a lesson.',n+' ate and left no crumbs.','The CPU has asked for a transfer to a different game.'];
+ else if(d>=2)pool=['Kai! '+n+' no dey play.','Clean win. The CPU will be talking about this at the trotro station.',n+' came, saw and collected the jollof.'];
+ else if(d===1)pool=['Won by a whisker. Heart rate: unavailable.','One goal. Zero dignity left for the CPU.','Scraped it. A win is a win, ask anyone in Kumasi.'];
+ else if(d===0)pool=['A draw. Nobody won, everybody lied about how it went.','Level. Both sides claim they were robbed.'];
+ else if(d>=-1)pool=['So close. '+n+' blames the pitch. The pitch has no comment.','Lost by one. Replay it in your head and it is a win.'];
+ else if(d>=-3)pool=['The CPU is a robot and still showed no mercy.',n+' said "I was just warming up". For 2 minutes.','Skill issue? Respectfully, maybe. Rematch?'];
+ else pool=['That was not a loss, that was a documentary.',n+' is typing "lag" in the group chat.','The CPU is calling the family to come and watch.'];
+ return pick(pool)}
+let lastCmt='',lastMatch=null;
 function endMatch(){state='ended';paused=false;SFX.whistle();hideBig();const a=teams[0],b=teams[1];
  $('endTitle').textContent=a.score>b.score?'You win!':a.score<b.score?'CPU wins':'Draw';
  $('endTitle').style.color=a.score>b.score?'#ffc61a':a.score<b.score?'#ff6b92':'#fff';
@@ -396,8 +423,10 @@ function endMatch(){state='ended';paused=false;SFX.whistle();hideBig();const a=t
  const tot=(a.stats.poss+b.stats.poss)||1,pa=Math.round(a.stats.poss/tot*100);
  const row=(l,m,r)=>'<span class="l">'+l+'</span><span class="m">'+m+'</span><span class="r">'+r+'</span>';
  $('endStats').innerHTML=row(a.stats.shots,'Shots',b.stats.shots)+row(pa+'%','Possession',(100-pa)+'%')+row(Math.round(a.stats.morale),'Morale earned',Math.round(b.stats.morale))+row(a.stats.powers,'Powers used',b.stats.powers);
+ const nm=playerName();lastCmt=matchComment(a,b,nm);$('endCmt').textContent=lastCmt;
+ lastMatch={name:nm,a:a.score,b:b.score,pa,sa:a.stats.shots,sb:b.stats.shots,ma:Math.round(a.stats.morale),mb:Math.round(b.stats.morale),pw:a.stats.powers,pwb:b.stats.powers,load:[...a.loadout],cpuLoad:[...b.loadout],used:{...a.stats.used},cused:{...b.stats.used},diff:settings.diff,len:settings.len,goals:goalLog.slice(),juju:juju.used,rev:reversals,cmt:lastCmt};
  $('end').classList.remove('hidden')}
-function goalScored(team){const t=teams[team],con=teams[1-team];t.score++;lastScorer=team;goalUndone=false;state='goal';teams.forEach(x=>x.lock=0);stateT=3.1;timeScaleTarget=.3;
+function goalScored(team){const t=teams[team],con=teams[1-team];t.score++;lastScorer=team;goalUndone=false;goalLog.push([team,Math.round(settings.len-Math.max(0,matchT))]);state='goal';teams.forEach(x=>x.lock=0);stateT=3.1;timeScaleTarget=.3;
  shake=reduceMotion?3:16;SFX.goal();
  if(ball.shot&&ball.lastTeam===team)earn(t,'ontarget',8);earn(con,'concede',15);
  ball.fire=0;ball.shot=false;clearEffects();
@@ -485,7 +514,7 @@ function powerTarget(t,id){const c=carrierOf(t),has=ball.owner&&ball.owner.team=
  return'Unknown power'}
 let goalUndone=false;
 // Sankofa: go back and fetch it. Right after conceding, the goal is wiped off and your side restarts with the ball
-function reverseGoal(t){const sc=teams[lastScorer];sc.score=Math.max(0,sc.score-1);goalUndone=true;SFX.sankofa();
+function reverseGoal(t){const sc=teams[lastScorer];sc.score=Math.max(0,sc.score-1);goalUndone=true;reversals++;goalLog.pop();SFX.sankofa();
  ring(ball.x,ball.y,10,320,.9,PW.sankofa.color);ring(CX,CY,10,260,.9,PW.sankofa.color);shake=Math.max(shake,reduceMotion?2:10);
  hideBig();setupKickoff(t.id);
  showBanner((t.id===0?'You: ':'CPU: ')+'SANKOFA! Goal reversed',PW.sankofa.color,2200)}
@@ -495,9 +524,9 @@ function usePower(t,id){const def=PW[id],human=t.id===0&&!demo;
  if(paused||(state!=='play'&&!rev)||!def||!t.loadout.includes(id))return false;
  if(t.wind)return no('');if(t.pw[id]>0)return no(def.name+' is cooling down');if(t.lock>0)return no('');
  const cost=powerCost(t,id);if(t.morale<cost)return no('Need '+cost+' Morale for '+def.name);
- if(rev){t.morale-=cost;t.lastUse[id]=simClock;t.pw[id]=def.cd;t.lock=LOCK;t.stats.powers++;reverseGoal(t);return true}
+ if(rev){t.morale-=cost;t.lastUse[id]=simClock;t.pw[id]=def.cd;t.lock=LOCK;t.stats.powers++;t.stats.used[id]=(t.stats.used[id]||0)+1;reverseGoal(t);return true}
  const p=powerTarget(t,id);if(typeof p==='string')return no(p);
- t.morale-=cost;t.lastUse[id]=simClock;t.pw[id]=def.cd;t.lock=LOCK;t.stats.powers++;
+ t.morale-=cost;t.lastUse[id]=simClock;t.pw[id]=def.cd;t.lock=LOCK;t.stats.powers++;t.stats.used[id]=(t.stats.used[id]||0)+1;
  t.wind={id,p,t:def.wind,max:def.wind,dx:p.fx,dy:p.fy};
  SFX[id]();ring(p.x,p.y,p.r+46,p.r+6,def.wind,def.color);
  showBanner((t.id===0?'You: ':'CPU: ')+def.name+(id==='trotro'?'! Circle! Circle!':'!'),def.color);return true}
@@ -947,6 +976,7 @@ const SLOT={Digit1:0,Digit2:1,Digit3:2,Numpad1:0,Numpad2:1,Numpad3:2};
 function setPaused(v){if(demo||state==='ended')return;paused=v;$('pause').classList.toggle('hidden',!v);if(v){input.shootHeld=false}}
 window.addEventListener('keydown',e=>{
  if(!demo&&!paused&&['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
+ if(e.target&&e.target.tagName==='INPUT')return;
  if(e.repeat)return;
  if(e.code==='Escape'||e.code==='KeyP'){if(!demo)setPaused(!paused);return}
  if(e.code==='KeyM'){toggleMute();return}
@@ -958,6 +988,7 @@ window.addEventListener('keydown',e=>{
  if(e.code==='KeyQ'||e.code==='KeyE'){switchPlayer();return}
  keys.add(e.code);readKeys()});
 window.addEventListener('keyup',e=>{
+ if(e.target&&e.target.tagName==='INPUT')return;
  if(e.code==='Space'||e.code==='KeyJ'){if(input.shootHeld){input.shootHeld=false;input.shootUp=true}return}
  keys.delete(e.code);readKeys()});
 window.addEventListener('blur',()=>{keys.clear();kbx=kby=0;syncMove();input.shootHeld=false;if(!demo&&(state==='play'||state==='kickoff'))setPaused(true)});
@@ -993,6 +1024,53 @@ $('btnResume').addEventListener('click',()=>setPaused(false));
 $('btnQuit').addEventListener('click',toMenu);
 $('btnAgain').addEventListener('click',()=>{initAudio();startMatch()});
 $('btnMenu').addEventListener('click',toMenu);
+const nameIn=$('nameIn');nameIn.value=settings.name;nameIn.addEventListener('input',()=>{settings.name=nameIn.value.slice(0,14);saveSettings()});
+nameIn.addEventListener('keydown',e=>{if(e.key==='Enter')nameIn.blur()});
+/* ---------- share card ---------- */
+const svgImg=(p,color)=>new Promise(res=>{const src=p.icon.replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" fill="'+color+'" color="'+color+'" ');const im=new Image();im.onload=()=>res(im);im.onerror=()=>res(null);im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(src)});
+function wrapText(c,t,x,y,mw,lh){const w=t.split(' ');let l='';for(const k of w){const tt=l?l+' '+k:k;if(c.measureText(tt).width>mw&&l){c.fillText(l,x,y);l=k;y+=lh}else l=tt}c.fillText(l,x,y);return y+lh}
+async function buildShareCard(m){try{await document.fonts.ready}catch(e){}
+ const W2=1080,H2=1760,cv=document.createElement('canvas');cv.width=W2;cv.height=H2;const c=cv.getContext('2d');
+ const g=c.createRadialGradient(W2/2,0,100,W2/2,0,H2);g.addColorStop(0,'#2c2060');g.addColorStop(.6,'#150f2e');g.addColorStop(1,'#0d0820');c.fillStyle=g;c.fillRect(0,0,W2,H2);
+ c.fillStyle='rgba(255,255,255,.04)';for(let i=0;i<8;i++)c.fillRect(0,i*H2/8,W2,H2/16);
+ const F="'Bowlby One',Impact,sans-serif",G="'Figtree',system-ui,sans-serif";c.textAlign='center';
+ c.font='92px '+F;c.fillStyle='#e0245e';c.fillText('Inposibal',W2/2+5,135);c.fillStyle='#ffc61a';c.fillText('Inposibal',W2/2,130);
+ const win=m.a>m.b,draw=m.a===m.b,res=win?'VICTORY':draw?'DRAW':'DEFEAT';
+ c.font='46px '+F;c.fillStyle=win?'#ffc61a':draw?'#fff':'#ff6b92';c.fillText(res,W2/2,215);
+ c.font='800 34px '+G;c.fillStyle='#cfc7f5';c.fillText(m.name+'  vs  CPU ('+({chill:'Chill',pro:'Pro',legend:'Legend'}[m.diff])+')',W2/2,268);
+ c.font='230px '+F;c.fillStyle='#fff';c.fillText(m.a+' - '+m.b,W2/2,500);
+ if(m.juju){c.font='46px '+F;c.fillStyle='#b86bff';c.fillText('CPU USED JUJU',W2/2,570)}
+ else if(m.rev){c.font='40px '+F;c.fillStyle='#e0b04a';c.fillText('SANKOFA REVERSED '+m.rev+' GOAL'+(m.rev>1?'S':''),W2/2,570)}
+ // goal timeline
+ const tx0=120,tx1=W2-120,ty=650;c.strokeStyle='rgba(255,255,255,.25)';c.lineWidth=6;c.lineCap='round';c.beginPath();c.moveTo(tx0,ty);c.lineTo(tx1,ty);c.stroke();
+ c.font='700 24px '+G;c.fillStyle='#8f87c4';c.fillText('0:00',tx0,ty+50);c.fillText(Math.floor(m.len/60)+':00',tx1,ty+50);
+ for(const [tm,when] of m.goals){const x=tx0+(tx1-tx0)*Math.min(1,when/m.len);c.fillStyle=tm===0?'#ffc61a':'#e0245e';c.beginPath();c.arc(x,ty,16,0,Math.PI*2);c.fill();c.strokeStyle='#150f2e';c.lineWidth=4;c.stroke()}
+ // stats
+ const rows=[[m.sa,'Shots',m.sb],[m.pa+'%','Possession',(100-m.pa)+'%'],[m.ma,'Morale earned',m.mb],[m.pw,'Powers used',m.pwb]];
+ let y=760;for(const [l,mid,r] of rows){c.fillStyle='rgba(255,255,255,.07)';c.beginPath();c.roundRect(90,y-48,W2-180,76,20);c.fill();
+  c.font='800 42px '+G;c.textAlign='left';c.fillStyle='#ffc61a';c.fillText(String(l),130,y+6);c.textAlign='right';c.fillStyle='#ff6b92';c.fillText(String(r),W2-130,y+6);
+  c.textAlign='center';c.font='700 30px '+G;c.fillStyle='#cfc7f5';c.fillText(mid,W2/2,y+4);y+=92}
+ // tactics
+ c.font='46px '+F;c.fillStyle='#fff';c.fillText('MY TACTICS',W2/2,y+50);y+=90;
+ const imgs=await Promise.all(m.load.map(id=>svgImg(PW[id],'#1a1030')));
+ m.load.forEach((id,i)=>{const p=PW[id],cx=W2/2+(i-1)*320,n=m.used[id]||0;
+  c.fillStyle=p.color;c.beginPath();c.arc(cx,y+60,64,0,Math.PI*2);c.fill();if(imgs[i])c.drawImage(imgs[i],cx-36,y+24,72,72);
+  c.font='800 32px '+G;c.fillStyle='#fff';c.fillText(p.name,cx,y+170);c.font='700 26px '+G;c.fillStyle='#cfc7f5';c.fillText(n?'used '+n+'x':'saved it',cx,y+206)});
+ y+=250;
+ // comment
+ c.font='italic 800 38px '+G;c.fillStyle='#fff';c.textAlign='center';const endY=wrapText(c,'\u201c'+m.cmt+'\u201d',W2/2,y+10,W2-200,52);
+ c.font='800 34px '+G;c.fillStyle='#ffc61a';c.fillText('inposibal.anasiusa.dev',W2/2,H2-50);
+ return new Promise(res=>cv.toBlob(b=>res(b),'image/png'))}
+let shareBlob=null,shareUrl='';
+$('btnShare').addEventListener('click',async()=>{if(!lastMatch)return;const bs=$('btnShare');bs.disabled=true;bs.textContent='Making it...';
+ try{shareBlob=await buildShareCard(lastMatch);if(shareUrl)URL.revokeObjectURL(shareUrl);shareUrl=URL.createObjectURL(shareBlob);$('shareImg').src=shareUrl;const p=$('sharePane');p.classList.remove('hidden');p.style.display='grid'}catch(e){}
+ bs.disabled=false;bs.textContent='Share'});
+$('btnShareClose').addEventListener('click',()=>{$('sharePane').style.display='none'});
+$('btnSend').addEventListener('click',async()=>{if(!shareBlob)return;const m=lastMatch,txt=m.name+' '+m.a+' - '+m.b+' CPU on Inposibal. '+m.cmt+' Play: https://inposibal.anasiusa.dev';
+ const file=new File([shareBlob],'inposibal-result.png',{type:'image/png'});
+ try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],text:txt,title:'Inposibal'});return}}catch(e){if(e&&e.name==='AbortError')return}
+ const a=document.createElement('a');a.href=shareUrl;a.download='inposibal-result.png';document.body.appendChild(a);a.click();a.remove();
+ try{await navigator.clipboard.writeText(txt)}catch(e){}});
 syncSeg();buildPicker();
 
 /* ---------- layout + loop ---------- */
