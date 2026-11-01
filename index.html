@@ -404,17 +404,37 @@ function startMatch(){jujuReset();demo=false;document.querySelector('#hud .tm .n
 function startDemo(){jujuReset();demo=true;paused=false;sudden=false;matchT=999;resetTeams();hideBig();frameEl.classList.remove('playing');setupKickoff(Math.random()<.5?0:1)}
 function toMenu(){$('end').classList.add('hidden');$('pause').classList.add('hidden');$('menu').classList.remove('hidden');startDemo()}
 const pick=a=>a[Math.floor(Math.random()*a.length)];
-function matchComment(a,b,n){const d=a.score-b.score;let pool;
- if(juju.used)pool=['The CPU used JUJU. '+n+' was robbed by spiritual forces. Please call VAR to the ancestors.','Lost to witchcraft. Technically not a skill issue.','JUJU at the last second. '+n+' would like to speak to the referee, the pastor and the herbalist.','The CPU said "I will not lose" and the universe said "okay".'];
- else if(reversals>0&&d>=0)pool=['Sankofa: went back and fetched that goal. '+n+' bends time now.','Conceded, reversed it, carried on. '+n+' does not accept bad news.'];
- else if(d>=4)pool=['Absolute scenes. The CPU is filing a complaint with the ministry.','Chale, that was not a match, that was a lesson.',n+' ate and left no crumbs.','The CPU has asked for a transfer to a different game.'];
- else if(d>=2)pool=['Kai! '+n+' no dey play.','Clean win. The CPU will be talking about this at the trotro station.',n+' came, saw and collected the jollof.'];
- else if(d===1)pool=['Won by a whisker. Heart rate: unavailable.','One goal. Zero dignity left for the CPU.','Scraped it. A win is a win, ask anyone in Kumasi.'];
- else if(d===0)pool=['A draw. Nobody won, everybody lied about how it went.','Level. Both sides claim they were robbed.'];
- else if(d>=-1)pool=['So close. '+n+' blames the pitch. The pitch has no comment.','Lost by one. Replay it in your head and it is a win.'];
- else if(d>=-3)pool=['The CPU is a robot and still showed no mercy.',n+' said "I was just warming up". For 2 minutes.','Skill issue? Respectfully, maybe. Rematch?'];
- else pool=['That was not a loss, that was a documentary.',n+' is typing "lag" in the group chat.','The CPU is calling the family to come and watch.'];
- return pick(pool)}
+function matchComment(a,b,n){const d=a.score-b.score,tot=(a.stats.poss+b.stats.poss)||1,pa=a.stats.poss/tot,P=[],add=(...x)=>P.push(...x);
+ const lens=settings.len;
+ if(juju.used){add('The CPU used JUJU. '+n+' was robbed by spiritual forces. Please call VAR to the ancestors.','Lost to witchcraft. Technically not a skill issue.','JUJU at the last second. '+n+' would like to speak to the referee, the pastor and the herbalist.','The CPU said "I will not lose" and the universe said "okay".',
+  'Down to the last 3 seconds and the CPU consulted the village elders. Scandalous.','Not even Messi can beat a man with a juju. '+n+' did well.','Final whistle, then a puff of smoke. Somebody check the CPU\'s grandmother.','The CPU did not outplay '+n+'. The CPU out-prayed '+n+'.','Screenshot this and send it to the FA. This is spiritual fraud.','"It was 5-1, I swear." - '+n+', to everyone, forever.',
+  'The CPU lost for 117 seconds and then simply stopped losing.','Juju is not a tactic. Juju is a lifestyle. Rematch and bring salt.')}
+ else{
+ if(reversals>0&&d>=0)add('Sankofa: went back and fetched that goal. '+n+' bends time now.','Conceded, reversed it, carried on. '+n+' does not accept bad news.','The goal never happened. '+n+' has the receipts and they are all blank.','VAR? No. SANKOFA. Goal deleted, feelings spared.');
+ else if(reversals>0)add('Even Sankofa could not save '+n+'. Some goals just come back.','Used time travel and still lost. That is a real skill.');
+ if(d>=4)add('Absolute scenes. The CPU is filing a complaint with the ministry.','Chale, that was not a match, that was a lesson.',n+' ate and left no crumbs.','The CPU has asked for a transfer to a different game.','The CPU is now a Sunday league fan.',n+' did not play the game, '+n+' reviewed it.','Somebody check on the CPU. It has stopped answering.','Scoreline so rude it needs an apology note.','This was a robbery. By '+n+'. In broad daylight. With confetti.');
+ else if(d>=2)add('Kai! '+n+' no dey play.','Clean win. The CPU will be talking about this at the trotro station.',n+' came, saw and collected the jollof.','Comfortable. Dangerous. Slightly smug.','The CPU is asking where the exit is.','Good win. '+n+' is taking the long way home to be seen.','The CPU has been humbled and it has not yet recovered its password.');
+ else if(d===1)add('Won by a whisker. Heart rate: unavailable.','One goal. Zero dignity left for the CPU.','Scraped it. A win is a win, ask anyone in Kumasi.','Tight. Sweaty. Legal. '+n+' wins.','Won by one. The other goal was never found.','Barely won, will tell it like a heist film.');
+ else if(d===0)add('A draw. Nobody won, everybody lied about how it went.','Level. Both sides claim they were robbed.','Honours even. The CPU says it let '+n+' get that.','Nobody lost, nobody won, jollof is still undecided.','A draw is just a loss with better branding.');
+ else if(d>=-1)add('So close. '+n+' blames the pitch. The pitch has no comment.','Lost by one. Replay it in your head and it is a win.','Lost by a whisker, but '+n+' has the better personality.','Heartbreak in the 1-goal zone. The CPU did not even celebrate. Rude.',n+' was robbed. By a robot. Of one goal. Quietly.');
+ else if(d>=-3)add('The CPU is a robot and still showed no mercy.',n+' said "I was just warming up". For 2 minutes.','Skill issue? Respectfully, maybe. Rematch?',n+' will be back. Probably after lunch.','The CPU does not even have legs. Think about that.','Lost. Blaming the phone, the network and the weather in that order.','An educational defeat. The lesson was: lose less.');
+ else add('That was not a loss, that was a documentary.',n+' is typing "lag" in the group chat.','The CPU is calling the family to come and watch.','The scoreline needs a seatbelt.','Even the goalkeeper stopped to clap. For the CPU.',n+' needs hugs and a better formation.','Deleting this screenshot in 3, 2, 1...');
+ if(b.score===0&&d>0)add('Clean sheet! The CPU got nothing. Not even a kind word.',n+' kept it tight. Even the air could not get in.','Shutout. The CPU is on its knees.');
+ if(a.score===0&&d<0)add('Zero goals. The net was open and still said no.','The ball and '+n+' were not on speaking terms today.');
+ if(a.score>=7)add('Seven goals?! This is a basketball score, '+n+'.');
+ if(a.score+b.score>=10)add('A goal fest. The goalkeepers asked for overtime pay.','The keepers are demanding hazard pay.');
+ if(a.stats.powers===0)add('Did not use a single power. '+n+' plays on principle. Or panic.','Zero powers used. Brave? Silly? Both.');
+ else if(a.stats.powers>=10)add('Used '+a.stats.powers+' powers. '+n+' treated this like a ritual.','Power spam detected. The CPU is reporting this.');
+ if(b.stats.powers>=10)add('The CPU used '+b.stats.powers+' powers. Even robots love a bit of chaos.');
+ if(pa>=.7&&d<=0)add('Had '+Math.round(pa*100)+'% possession and still did not win. That is a rare talent.','All the ball, none of the goals. Very modern football.');
+ if(pa<=.3&&d>0)add('Won with only '+Math.round(pa*100)+'% of the ball. Efficient. Shameless. Beautiful.','The CPU had the ball. '+n+' had the goals.');
+ if(lens===60&&d>0)add('Won in one minute. The CPU is still lacing its boots.');
+ if(lens===240&&d<0)add('Four whole minutes of football and still lost. Dedication.');
+ if(settings.diff==='legend'&&d>0)add('Beat LEGEND. Put it on the CV. Put it on the tombstone.',n+' beat Legend difficulty. Everyone, act normal.');
+ if(settings.diff==='legend'&&d<0)add('Lost to Legend. It is in the name. It is a legend. You are fine.');
+ if(settings.diff==='chill'&&d>0)add('Beat Chill. The CPU was literally on holiday.');
+ if(settings.diff==='chill'&&d<0)add('Lost to CHILL difficulty. Take a sip of water. We will not tell anyone. (Screenshot it.)')}
+ return pick(P)}
 let lastCmt='',lastMatch=null;
 function endMatch(){state='ended';paused=false;SFX.whistle();hideBig();const a=teams[0],b=teams[1];
  $('endTitle').textContent=a.score>b.score?'You win!':a.score<b.score?'CPU wins':'Draw';
