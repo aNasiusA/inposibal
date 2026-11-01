@@ -309,12 +309,17 @@ function randomLoadout(){for(;;){const ids=POWERS.map(p=>p.id);for(let i=ids.len
 
 /* ---------- audio ---------- */
 let actx=null,master=null,lastBounce=0;
-function initAudio(){if(actx)return;try{actx=new(window.AudioContext||window.webkitAudioContext)();master=actx.createGain();master.gain.value=.5;master.connect(actx.destination)}catch(e){actx=null}
-  if(actx&&actx.state==='suspended')actx.resume()}
-function tone(f,d,type,v,slide,delay){if(!actx||muted)return;const t=actx.currentTime+(delay||0),o=actx.createOscillator(),g=actx.createGain();
+function makeCtx(){try{actx=new(window.AudioContext||window.webkitAudioContext)();master=actx.createGain();master.gain.value=.5;master.connect(actx.destination);actx.onstatechange=()=>{if(actx&&actx.state!=='running'&&!document.hidden)wakeAudio()}}catch(e){actx=null}}
+function initAudio(){if(!actx)makeCtx();wakeAudio()}
+// iOS suspends (or "interrupts") audio when the phone locks or the tab is hidden; bring it back, or rebuild it if it died
+function wakeAudio(){if(!actx)return;if(actx.state==='closed'){makeCtx();return}
+  if(actx.state!=='running'){try{const p=actx.resume();if(p&&p.catch)p.catch(()=>{})}catch(e){}}}
+['visibilitychange','pageshow','focus'].forEach(ev=>window.addEventListener(ev,()=>{if(!document.hidden)wakeAudio()}));
+['pointerdown','touchend','keydown'].forEach(ev=>window.addEventListener(ev,wakeAudio,{passive:true,capture:true}));
+function tone(f,d,type,v,slide,delay){if(!actx||muted)return;if(actx.state!=='running'){wakeAudio();return}const t=actx.currentTime+(delay||0),o=actx.createOscillator(),g=actx.createGain();
   o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);
   g.gain.setValueAtTime(v||.2,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(master);o.start(t);o.stop(t+d+.03)}
-function noise(d,v,delay){if(!actx||muted)return;const n=Math.floor(actx.sampleRate*d),b=actx.createBuffer(1,n,actx.sampleRate),c=b.getChannelData(0);
+function noise(d,v,delay){if(!actx||muted)return;if(actx.state!=='running'){wakeAudio();return}const n=Math.floor(actx.sampleRate*d),b=actx.createBuffer(1,n,actx.sampleRate),c=b.getChannelData(0);
   for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=actx.createBufferSource(),g=actx.createGain();s.buffer=b;g.gain.value=v||.2;s.connect(g);g.connect(master);s.start(actx.currentTime+(delay||0))}
 const SFX={
  shot(){tone(240,.14,'sawtooth',.16,-150);noise(.07,.12)},
