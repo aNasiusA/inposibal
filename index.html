@@ -396,7 +396,7 @@ function resetTeams(){simClock=0;teams.forEach(t=>{t.score=0;t.rocket=0;t.ctrl=n
   POWERS.forEach(p=>t.pw[p.id]=0)})}
 function clearEffects(){teams.forEach(t=>{t.rocket=0;t.wind=null;t.dumsor=0;t.sankofa=0;t.lastPass=null});
  for(const p of ALL){p.giant=p.azonto=p.magnet=p.dash=p.heavy=p.cut=p.cutCD=p.azHold=p.aiRel=0}}
-function setupKickoff(kt){kickTeam=kt;clearEffects();
+function setupKickoff(kt){kickTeam=kt;clearEffects();hist.length=0;
  for(const t of teams)for(const p of t.players){const f=formation[p.idx],d=attackDir(t.id);
   p.x=t.id===0?PX0+f[0]:PX1-f[0];p.y=f[1];p.vx=p.vy=p.dx=p.dy=0;p.fx=d;p.fy=0;
   p.stun=p.slide=p.recover=p.pickupLock=p.tackleCD=p.hitCD=p.protect=p.charge=p.hold=0;p.scale=1;p.r=p.base}
@@ -530,7 +530,7 @@ function endMatch(){state='ended';paused=false;SFX.whistle();hideBig();const a=t
  const nm=playerName();lastCmt=matchComment(a,b,nm);$('endCmt').textContent=lastCmt;
  lastMatch={name:nm,a:a.score,b:b.score,pa,sa:a.stats.shots,sb:b.stats.shots,ma:Math.round(a.stats.morale),mb:Math.round(b.stats.morale),pw:a.stats.powers,pwb:b.stats.powers,load:[...a.loadout],cpuLoad:[...b.loadout],used:{...a.stats.used},cused:{...b.stats.used},diff:settings.diff,len:settings.len,goals:goalLog.slice(),juju:juju.used,rev:reversals,cmt:lastCmt};
  $('end').classList.remove('hidden')}
-function goalScored(team){const t=teams[team],con=teams[1-team];t.score++;lastScorer=team;goalUndone=false;goalLog.push([team,Math.round(settings.len-Math.max(0,matchT))]);state='goal';teams.forEach(x=>x.lock=0);stateT=3.1;timeScaleTarget=.3;
+function goalScored(team){const t=teams[team],con=teams[1-team];t.score++;lastScorer=team;goalUndone=false;goalIdx=hist.length;goalLog.push([team,Math.round(settings.len-Math.max(0,matchT))]);state='goal';teams.forEach(x=>x.lock=0);stateT=3.1;timeScaleTarget=.3;
  shake=reduceMotion?3:16;SFX.goal();
  if(ball.shot&&ball.lastTeam===team)earn(t,'ontarget',8);earn(con,'concede',15);
  ball.fire=0;ball.shot=false;clearEffects();
@@ -617,11 +617,23 @@ function powerTarget(t,id){const c=carrierOf(t),has=ball.owner&&ball.owner.team=
   case'magnet':if(has)return'Ball magnet is for loose balls';return pickTarget(t)||'No one free';
   case'sankofa':if(has)return'Sankofa is for when you have lost the ball';if(!inOwnHalf(t,ball.x))return'Sankofa works when the ball is in your half';return pickTarget(t)||'No one free'}
  return'Unknown power'}
+// Sankofa rewind: the last few seconds are played backwards on screen before the restart
+const hist=[];let goalIdx=0,rewind=null;
+function histPush(){const p=[];for(const q of ALL)p.push([q.x,q.y,q.fx,q.fy]);hist.push({b:[ball.x,ball.y],p});if(hist.length>420)hist.shift()}
+function startRewind(t){state='rewind';timeScaleTarget=1;timeScale=1;ball.owner=null;ball.vx=ball.vy=0;ball.fire=0;
+ rewind={t,i:hist.length-1,end:Math.max(0,goalIdx-150)};fnoise(1.1,.45,5000,300,'bandpass',1.2)}
+function rewindStep(){const R=rewind;if(!R)return;R.i=Math.max(R.end,R.i-2);const h=hist[R.i];
+ if(h){ball.x=h.b[0];ball.y=h.b[1];ball.owner=null;ball.vx=ball.vy=0;ALL.forEach((p,k)=>{const q=h.p[k];if(!q)return;p.x=q[0];p.y=q[1];p.vx=p.vy=0;p.fx=q[2];p.fy=q[3]})}
+ if(R.i<=R.end){rewind=null;hist.length=0;setupKickoff(R.t.id)}}
+function drawRewind(){if(state!=='rewind')return;const cs=canvas.width/W,w=canvas.width,h=canvas.height;ctx.save();ctx.setTransform(1,0,0,1,0,0);
+ ctx.fillStyle='rgba(224,176,74,.16)';ctx.fillRect(0,0,w,h);ctx.fillStyle='rgba(0,0,0,.14)';for(let y=0;y<h;y+=7*cs)ctx.fillRect(0,y,w,2.5*cs);
+ const by=((time*1100)%(H+240)-120)*cs;ctx.fillStyle='rgba(255,255,255,.16)';ctx.fillRect(0,by,w,44*cs);ctx.fillRect(0,(by+h*.45)%h,w,14*cs);
+ ctx.textAlign='center';ctx.font=(52*cs)+"px 'Bowlby One',Impact,sans-serif";ctx.fillStyle='rgba(21,15,46,.8)';ctx.fillText('\u25C0\u25C0 REWIND',w/2+3*cs,h*.33+3*cs);ctx.fillStyle='#ffd166';ctx.fillText('\u25C0\u25C0 REWIND',w/2,h*.33);ctx.restore()}
 let goalUndone=false;
 // Sankofa: go back and fetch it. Right after conceding, the goal is wiped off and your side restarts with the ball
 function reverseGoal(t){const sc=teams[lastScorer];sc.score=Math.max(0,sc.score-1);goalUndone=true;reversals++;goalLog.pop();SFX.sankofa();
  ring(ball.x,ball.y,10,320,.9,PW.sankofa.color);ring(CX,CY,10,260,.9,PW.sankofa.color);shake=Math.max(shake,reduceMotion?2:10);
- hideBig();setupKickoff(t.id);cmStop();say(t.id===0?'sankofa_you':'sankofa_cpu',3,150);roar(t.id===0?'goal':'groan');
+ hideBig();startRewind(t);cmStop();say(t.id===0?'sankofa_you':'sankofa_cpu',3,150);roar(t.id===0?'goal':'groan');
  showBanner((t.id===0?'You: ':'CPU: ')+'SANKOFA! Goal reversed',PW.sankofa.color,2200)}
 function usePower(t,id){const def=PW[id],human=t.id===0&&!demo;
  const no=msg=>{if(human&&msg){showBanner(msg,'#9b93c9',1300);SFX.fizzle()}return false};
@@ -893,11 +905,13 @@ function update(dt){
   if(!demo){const n=Math.ceil((stateT-.4)/.6);if(n>=1)setBig(String(n),'#fff');else setBig('Go!','#ffc61a',700)}
   if(stateT<=0){state='play';const a=teams[kickTeam].players[1];take(a);teams[1-kickTeam].players.forEach(p=>p.pickupLock=.6);if(!demo){SFX.whistle();say('kickoff',2,300)}
 }}
+ else if(state==='rewind')rewindStep();
  else if(state==='play')playUpdate(g);
  else if(state==='goal'){stateT-=dt;for(const p of ALL)updatePlayer(p,g,false);updateBall(g);
   if(stateT<2.2)timeScaleTarget=1;
   if(!demo&&lastScorer===0&&!goalUndone&&stateT<2.6&&stateT>2.2){const c=teams[1],D=DIFF[settings.diff];if(c.loadout.includes('sankofa')&&c.pw.sankofa<=0&&c.morale>=powerCost(c,'sankofa')&&Math.random()<g*D.moraleUse*1.2)usePower(c,'sankofa')}
   if(stateT<=0){hideBig();if(sudden&&!demo){endMatch()}else setupKickoff(1-lastScorer)}}
+ if(!demo&&(state==='play'||state==='goal'))histPush();
  for(let i=parts.length-1;i>=0;i--){const q=parts[i];q.life+=g;if(q.life>=q.max){parts.splice(i,1);continue}
   q.vy+=q.g*g;const k=Math.exp(-q.drag*g);q.vx*=k;q.vy*=k;q.x+=q.vx*g;q.y+=q.vy*g;q.rot+=g*8}
  for(let i=rings.length-1;i>=0;i--){rings[i].life+=dt;if(rings[i].life>=rings[i].max)rings.splice(i,1)}
@@ -1025,7 +1039,7 @@ function render(){if(!pitchLayer)buildPitch();
  if(!ball.owner)drawBall();
  drawJuju();
  drawCues();drawFx();ctx.restore();
- drawDumsor(sx,sy)}
+ drawDumsor(sx,sy);drawRewind()}
 
 /* ---------- HUD ---------- */
 const pbtn={};let cpuIcons=[],cpuPepEl=null;
