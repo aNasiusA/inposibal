@@ -462,7 +462,7 @@ function musicTick(){if(!actx||!musicOn)return;if(!settings.music||paused||actx.
  const spb=60/112/4;while(musNext<actx.currentTime+.35){musicStep(musStep,musNext);musNext+=spb;musStep=(musStep+1)%64}}
 function applyAudioSettings(){busGain(musicBus,settings.music?MUS_LVL:0,.1);if(!settings.voice)cmStop();
  document.querySelectorAll('.segAud button').forEach(b=>b.setAttribute('aria-pressed',String(!!settings[b.dataset.v])))}
-function audioMatchStart(){CM.lastGroup={};CM.lastAny=0;CM.l10=false;crowdStart();musicStart();cmPreload(['kickoff','goal_you','goal_cpu','save','shot','last10','win','loss'])}
+function audioMatchStart(){CM.lastGroup={};CM.lastAny=0;CM.l10=false;musicStart();cmPreload(['kickoff','goal_you','goal_cpu','save','shot','last10','win','loss'])}
 function audioMatchEnd(a,b){musicStop();crowdStop();cmStop();
  const g=juju.used&&a.score<b.score?'juju_loss':a.score>b.score?(a.score-b.score>=4?'win_big':'win'):a.score<b.score?'loss':'draw';
  cmPreload([g]);say(g,3,900)}
