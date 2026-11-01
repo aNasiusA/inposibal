@@ -159,6 +159,9 @@ h2{font-family:'Bowlby One',Impact,sans-serif;font-weight:400;font-size:max(28px
 .stats .l{text-align:right}.stats .r{text-align:left}.stats .m{color:#cfc7f5;font-weight:500}
 .row{display:flex;gap:calc(var(--u)*14px);flex-wrap:wrap;justify-content:center}
 @media (max-width:760px){ .frame:not(.compact) .panel{grid-template-columns:1fr} .frame:not(.compact) .plist small{display:none} }
+.cmcap{position:absolute;left:50%;top:calc(var(--u)*78px);transform:translateX(-50%) translateY(-6px);max-width:86%;padding:.3em .9em;border-radius:999px;background:rgba(24,16,52,.9);color:#fff;font-weight:800;font-style:italic;font-size:max(11px,calc(var(--u)*19px));text-align:center;opacity:0;transition:opacity .18s,transform .18s;pointer-events:none;border:2px solid rgba(255,255,255,.18)}
+.cmcap.show{opacity:1;transform:translateX(-50%)}
+.frame:not(.playing) .cmcap{display:none}
 .nameIn{font:inherit;font-weight:800;color:#fff;background:rgba(255,255,255,.09);border:2px solid transparent;border-radius:calc(var(--u)*14px);padding:.45em .8em;width:min(100%,14em);-webkit-user-select:text;user-select:text}
 .nameIn:focus{outline:none;border-color:#ffc61a}
 .nameIn::placeholder{color:#8f87c4}
@@ -197,6 +200,7 @@ h2{font-family:'Bowlby One',Impact,sans-serif;font-weight:400;font-size:max(28px
     <div class="cpuload" id="cpuLoad"></div>
     <div class="tools"><button id="btnPause" type="button">Pause</button><button id="btnMute" type="button">Sound on</button></div>
     <div class="banner" id="banner"></div>
+    <div class="cmcap" id="cmCap"></div>
     <div class="big" id="big"></div>
     <div class="powers" id="powers"></div>
     <div class="morale" id="morale"><i id="pepFill"></i><span id="pepNum">Morale 30</span></div>
@@ -217,6 +221,11 @@ h2{font-family:'Bowlby One',Impact,sans-serif;font-weight:400;font-size:max(28px
           <div class="field">Opponent
             <div class="seg" id="segDiff" role="group" aria-label="Opponent strength">
               <button type="button" data-v="chill">Chill</button><button type="button" data-v="pro">Pro</button><button type="button" data-v="legend">Legend</button>
+            </div>
+          </div>
+          <div class="field">Sound
+            <div class="seg segAud" role="group" aria-label="Sound options">
+              <button type="button" data-v="music">Music</button><button type="button" data-v="voice">Commentary</button>
             </div>
           </div>
           <div class="field">Match length
@@ -245,6 +254,7 @@ h2{font-family:'Bowlby One',Impact,sans-serif;font-weight:400;font-size:max(28px
 
     <div class="overlay hidden" id="pause">
       <div class="card"><h2>Paused</h2>
+        <div class="seg segAud" role="group" aria-label="Sound options"><button type="button" data-v="music">Music</button><button type="button" data-v="voice">Commentary</button></div>
         <div class="row"><button class="btn" id="btnResume" type="button">Resume</button><button class="btn alt" id="btnQuit" type="button">Quit to menu</button></div>
       </div>
     </div>
@@ -297,19 +307,19 @@ const DIFF={
  pro:{speed:.93,react:.28,acc:.74,shootRange:400,gkErr:26,tackle:.18,slide:.12,slideHit:.55,moraleUse:.7,powerTick:1,powerGap:3,timing:.6},
  legend:{speed:1,react:.14,acc:.9,shootRange:470,gkErr:10,tackle:.28,slide:.22,slideHit:.7,moraleUse:.9,powerTick:.7,powerGap:2,timing:.85}
 };
-const settings={diff:'pro',len:120,loadout:['shito','dumsor','trotro'],name:''};
+const settings={diff:'pro',len:120,loadout:['shito','dumsor','trotro'],name:'',music:true,voice:true};
 let muted=false;
-try{const s=JSON.parse(localStorage.getItem('wildpitch')||'{}');if(DIFF[s.diff])settings.diff=s.diff;if([60,120,240].includes(s.len))settings.len=s.len;muted=!!s.muted;if(typeof s.name==='string')settings.name=s.name.slice(0,14);
+try{const s=JSON.parse(localStorage.getItem('wildpitch')||'{}');if(DIFF[s.diff])settings.diff=s.diff;if([60,120,240].includes(s.len))settings.len=s.len;muted=!!s.muted;if(typeof s.name==='string')settings.name=s.name.slice(0,14);if(s.music===false)settings.music=false;if(s.voice===false)settings.voice=false;
  if(Array.isArray(s.loadout)){const l=[...new Set(s.loadout.filter(id=>PW[id]))].slice(0,3);if(l.length===3&&!loadoutProblem(l))settings.loadout=l}}catch(e){}
-const saveSettings=()=>{try{localStorage.setItem('wildpitch',JSON.stringify({diff:settings.diff,len:settings.len,name:settings.name,muted,loadout:settings.loadout}))}catch(e){}};
+const saveSettings=()=>{try{localStorage.setItem('wildpitch',JSON.stringify({diff:settings.diff,len:settings.len,name:settings.name,music:settings.music,voice:settings.voice,muted,loadout:settings.loadout}))}catch(e){}};
 function loadoutProblem(L){if(L.filter(id=>PW[id].tier==='heavy').length>1)return'Only one heavy power allowed.';
  if(L.length===3&&L.every(id=>PW[id].cat===PW[L[0]].cat))return'Mix at least two categories.';return''}
 function randomLoadout(){for(;;){const ids=POWERS.map(p=>p.id);for(let i=ids.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[ids[i],ids[j]]=[ids[j],ids[i]]}
  const l=ids.slice(0,3);if(!loadoutProblem(l))return l}}
 
 /* ---------- audio ---------- */
-let actx=null,master=null,lastBounce=0;
-function makeCtx(){try{actx=new(window.AudioContext||window.webkitAudioContext)();master=actx.createGain();master.gain.value=.5;master.connect(actx.destination);actx.onstatechange=()=>{if(actx&&actx.state!=='running'&&!document.hidden)wakeAudio()}}catch(e){actx=null}}
+let actx=null,master=null,lastBounce=0,musicBus=null,crowdBus=null,voiceBus=null,crowdBase=.4,MUS_LVL=.5,crowdSrc=null,musicOn=false,musTimer=0,musStep=0,musNext=0;
+function makeCtx(){try{actx=new(window.AudioContext||window.webkitAudioContext)();master=actx.createGain();master.gain.value=muted?0:.5;master.connect(actx.destination);musicBus=actx.createGain();crowdBus=actx.createGain();voiceBus=actx.createGain();musicBus.gain.value=settings.music?MUS_LVL:0;crowdBus.gain.value=crowdBase;voiceBus.gain.value=1;[musicBus,crowdBus,voiceBus].forEach(b=>b.connect(master));crowdSrc=null;musicOn=false;actx.onstatechange=()=>{if(actx&&actx.state!=='running'&&!document.hidden)wakeAudio()}}catch(e){actx=null}}
 function initAudio(){if(!actx)makeCtx();wakeAudio()}
 // iOS suspends (or "interrupts") audio when the phone locks or the tab is hidden; bring it back, or rebuild it if it died
 function wakeAudio(){if(!actx)return;if(actx.state==='closed'){makeCtx();return}
@@ -388,26 +398,87 @@ function setupKickoff(kt){kickTeam=kt;clearEffects();
  parts.length=0;rings.length=0;later.length=0;beat.o=null;beat.s.clear();
  if(!demo)teams[0].ctrl=teams[0].players[1];
  state='kickoff';stateT=demo?.8:2.3;timeScale=timeScaleTarget=1}
+/* ---------- crowd, music and the commentator ---------- */
+const CM={man:null,buf:{},cur:null,pri:0,lastGroup:{},lastId:{},lastAny:0,seq:0,l10:false};
+fetch('audio/cm/manifest.json').then(x=>x.json()).then(m=>{CM.man=m}).catch(()=>{});
+function busGain(b,v,t){if(b&&actx)b.gain.setTargetAtTime(v,actx.currentTime,t||.12)}
+function cmGet(id){if(CM.buf[id])return CM.buf[id];if(!actx)return Promise.reject();
+ return CM.buf[id]=fetch('audio/cm/'+id+'.mp3').then(x=>x.arrayBuffer()).then(a=>new Promise((ok,no)=>actx.decodeAudioData(a,ok,no))).catch(e=>{delete CM.buf[id];throw e})}
+function cmPreload(groups){if(!actx||!CM.man)return;groups.forEach(g=>(CM.man[g]||[]).slice(0,2).forEach(v=>cmGet(v.id).catch(()=>{})))}
+const cmCap=document.getElementById('cmCap');
+function capShow(t){if(!cmCap)return;cmCap.textContent=t;cmCap.classList.add('show')}
+function capHide(){if(cmCap)cmCap.classList.remove('show')}
+function duckBuses(on){busGain(musicBus,settings.music?MUS_LVL*(on?.3:1):0,on?.05:.3);busGain(crowdBus,crowdBase*(on?.45:1),on?.05:.3)}
+function cmStop(){if(CM.cur){try{CM.cur.stop()}catch(e){}CM.cur=null}CM.pri=0;capHide();duckBuses(false)}
+// one voice at a time: a line only interrupts a lower priority one, and stale lines are dropped so he never calls what already ended
+function say(group,pri,delay){pri=pri||1;
+ if(delay){setTimeout(()=>say(group,pri),delay);return}
+ if(demo||!settings.voice||muted||!actx||actx.state!=='running'||!CM.man||!CM.man[group]||!CM.man[group].length||paused)return;
+ const now=performance.now();
+ if(CM.cur&&pri<=CM.pri)return;
+ if(pri<3&&now<CM.lastAny+1400)return;
+ if(now-(CM.lastGroup[group]||-1e9)<(pri>=3?2500:6500))return;
+ const list=CM.man[group];let v;do{v=list[Math.floor(Math.random()*list.length)]}while(list.length>1&&v.id===CM.lastId[group]);
+ CM.lastGroup[group]=now;CM.lastId[group]=v.id;const seq=++CM.seq,t0=now;
+ cmGet(v.id).then(buf=>{
+  if(performance.now()-t0>(pri>=3?4500:1600)||paused||!actx||(seq!==CM.seq&&pri<3)||(CM.cur&&pri<=CM.pri))return;
+  const src=actx.createBufferSource();src.buffer=buf;src.connect(voiceBus);
+  if(CM.cur){try{CM.cur.stop()}catch(e){}}
+  CM.cur=src;CM.pri=pri;CM.lastAny=performance.now()+buf.duration*1000;duckBuses(true);capShow(v.text);
+  src.onended=()=>{if(CM.cur===src){CM.cur=null;CM.pri=0;capHide();duckBuses(false)}};src.start()}).catch(()=>{})}
+let noiseBuf=null;
+function noiseBuffer(){if(noiseBuf||!actx)return noiseBuf;const n=actx.sampleRate*2,b=actx.createBuffer(1,n,actx.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=Math.random()*2-1;return noiseBuf=b}
+function crowdStart(){if(!actx||crowdSrc)return;const n=actx.sampleRate*3,b=actx.createBuffer(1,n,actx.sampleRate),c=b.getChannelData(0);let l=0;
+ for(let i=0;i<n;i++){l=l*.94+(Math.random()*2-1)*.35;c[i]=l*(.8+.2*Math.sin(i/actx.sampleRate*6.28*.7))}
+ const s=actx.createBufferSource(),f=actx.createBiquadFilter();s.buffer=b;s.loop=true;f.type='lowpass';f.frequency.value=1200;s.connect(f);f.connect(crowdBus);s.start();crowdSrc=s;busGain(crowdBus,crowdBase,.6)}
+function crowdStop(){if(crowdSrc){busGain(crowdBus,0,.4);const s=crowdSrc;crowdSrc=null;setTimeout(()=>{try{s.stop()}catch(e){}},1500)}}
+function crowdTick(){if(!crowdSrc||demo)return;const gx=Math.min(Math.abs(ball.x-PX0),Math.abs(ball.x-PX1)),near=Math.max(0,1-gx/340);const target=.32+.4*near;crowdBase+=(target-crowdBase)*.04;if(!CM.cur)busGain(crowdBus,crowdBase,.3)}
+function roar(kind){if(!actx||muted||demo||actx.state!=='running')return;const P={goal:[2.8,700,1600,2.2],ooh:[1.1,500,950,1.2],groan:[1.4,520,240,1.1]}[kind];if(!P)return;
+ const d=P[0],f0=P[1],f1=P[2],v=P[3],s=actx.createBufferSource(),f=actx.createBiquadFilter(),g=actx.createGain(),t=actx.currentTime;
+ s.buffer=noiseBuffer();s.loop=true;f.type='bandpass';f.Q.value=.8;f.frequency.setValueAtTime(f0,t);f.frequency.linearRampToValueAtTime(f1,t+d*.5);f.frequency.linearRampToValueAtTime(f0,t+d);
+ g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+d*.2);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(g);g.connect(crowdBus);s.start(t);s.stop(t+d+.1)}
+// a light afrobeat groove: kick, rim, shaker, bass and chord stabs
+function mTone(fr,t,d,type,v,slide){const o=actx.createOscillator(),g=actx.createGain();o.type=type;o.frequency.setValueAtTime(fr,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,slide),t+d);
+ g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(musicBus);o.start(t);o.stop(t+d+.02)}
+function mNoise(t,d,v,hp){const s=actx.createBufferSource(),f=actx.createBiquadFilter(),g=actx.createGain();s.buffer=noiseBuffer();f.type='highpass';f.frequency.value=hp;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(g);g.connect(musicBus);s.start(t,Math.random());s.stop(t+d+.02)}
+const ROOTS=[110,110,87.31,98],CHORDS=[[220,261.6,329.6],[220,261.6,329.6],[174.6,220,261.6],[196,246.9,293.7]];
+function musicStep(st,t){const s=st%16,bar=(st>>4)%4;
+ if(s===0||s===7||s===10)mTone(130,t,.16,'sine',.9,45);
+ if(s===4||s===12)mNoise(t,.09,.35,1800);
+ mNoise(t,.04,s%4===2?.14:.07,6500);
+ if([0,3,6,10,12].includes(s))mTone(ROOTS[bar],t,.2,'triangle',.5);
+ if(s===2||s===6||s===11)CHORDS[bar].forEach(f=>mTone(f,t,.12,'square',.05))}
+function musicStart(){if(!actx||musicOn)return;musicOn=true;musStep=0;musNext=actx.currentTime+.15;musTimer=setInterval(musicTick,120)}
+function musicStop(){musicOn=false;clearInterval(musTimer)}
+function musicTick(){if(!actx||!musicOn)return;if(!settings.music||paused||actx.state!=='running'){if(musNext<actx.currentTime)musNext=actx.currentTime+.1;return}
+ const spb=60/112/4;while(musNext<actx.currentTime+.35){musicStep(musStep,musNext);musNext+=spb;musStep=(musStep+1)%64}}
+function applyAudioSettings(){busGain(musicBus,settings.music?MUS_LVL:0,.1);if(!settings.voice)cmStop();
+ document.querySelectorAll('.segAud button').forEach(b=>b.setAttribute('aria-pressed',String(!!settings[b.dataset.v])))}
+function audioMatchStart(){CM.lastGroup={};CM.lastAny=0;CM.l10=false;crowdStart();musicStart();cmPreload(['kickoff','goal_you','goal_cpu','save','shot','last10','win','loss'])}
+function audioMatchEnd(a,b){musicStop();crowdStop();cmStop();
+ const g=juju.used&&a.score<b.score?'juju_loss':a.score>b.score?(a.score-b.score>=4?'win_big':'win'):a.score<b.score?'loss':'draw';
+ cmPreload([g]);say(g,3,900)}
+function powerSay(id,t){const you=t.id===0,m={shito:you?'shito_you':'shito_cpu',dumsor:you?'dumsor_you':'dumsor_cpu',trotro:you?'trotro_you':'trotro_cpu',obolo:'obolo',magnet:'magnet',azonto:'azonto'}[id];if(m)say(m,2)}
 const juju={rolled:false,active:false,balls:[],t:0,n:0,landed:0,used:false};
 let goalLog=[],reversals=0;
 function jujuReset(){goalLog=[];reversals=0;juju.used=false;juju.rolled=juju.active=false;juju.balls=[];juju.landed=0}
 function jujuCast(){juju.used=true;const c=teams[1],h=teams[0],n=h.score-c.score+1;juju.active=true;juju.n=n;juju.landed=0;juju.balls=[];juju.t=0;
  const src=c.players.filter(q=>!q.gk);for(let i=0;i<n;i++){const q=src[i%src.length];juju.balls.push({sx:q.x,sy:q.y,tx:PX0-14,ty:rand(GY0+20,GY1-20),delay:.9+i*.3,t:0,dur:.55,x:q.x,y:q.y,done:false,rot:0})}
- showBanner('CPU: JUJU!','#b86bff',2400);setBig('JUJU!','#b86bff',1400);SFX.dumsor();shake=Math.max(shake,reduceMotion?2:10);
+ showBanner('CPU: JUJU!','#b86bff',2400);setBig('JUJU!','#b86bff',1400);cmStop();say('juju',3);SFX.dumsor();shake=Math.max(shake,reduceMotion?2:10);
  for(const q of src)ring(q.x,q.y,q.r+4,q.r+70,.9,'#b86bff')}
 function jujuUpdate(g){if(!juju.active)return;juju.t+=g;
  for(const b of juju.balls){if(b.done)continue;if(juju.t<b.delay){b.x=b.sx;b.y=b.sy;continue}b.t+=g;const k=Math.min(1,b.t/b.dur);b.x=b.sx+(b.tx-b.sx)*k;b.y=b.sy+(b.ty-b.sy)*k;b.rot+=g*30;
   if(Math.random()<.8)burst(b.x,b.y,1,{color:['#b86bff','#e6d0ff'],s0:20,s1:90,l0:.3,l1:.6});
-  if(k>=1){b.done=true;juju.landed++;teams[1].score++;goalLog.push([1,Math.round(settings.len-Math.max(0,matchT))]);SFX.goal();shake=Math.max(shake,reduceMotion?2:12);
+  if(k>=1){b.done=true;juju.landed++;teams[1].score++;goalLog.push([1,Math.round(settings.len-Math.max(0,matchT))]);SFX.goal();roar('goal');say('juju_goal',3);shake=Math.max(shake,reduceMotion?2:12);
    burst(PX0,b.ty,50,{color:['#b86bff','#fff','#ffc61a','#e0245e'],kind:'confetti',s0:80,s1:480,l0:1,l1:2,z0:4,z1:8,g:380,drag:.9,a:0,spread:1.4});ring(PX0,b.ty,10,200,.7,'#b86bff');floatText(PX0+60,b.ty,'GOAL','#b86bff')}}
  if(juju.landed>=juju.n&&juju.t>juju.balls[juju.balls.length-1].delay+.9){juju.active=false;matchT=0}}
 function playerName(){return (settings.name||'').trim()||'Player'}
 function startMatch(){jujuReset();demo=false;document.querySelector('#hud .tm .n').textContent=playerName();paused=false;sudden=false;matchT=settings.len;resetTeams();hideBig();bannerEl.classList.remove('show');
  frameEl.classList.add('playing');$('menu').classList.add('hidden');$('end').classList.add('hidden');$('pause').classList.add('hidden');
  buildPowerBar();buildCpuLoad();setupKickoff(0);
- showBanner('CPU picked '+teams[1].loadout.map(id=>PW[id].name).join(', '),'#ff6b92',2600)}
+ showBanner('CPU picked '+teams[1].loadout.map(id=>PW[id].name).join(', '),'#ff6b92',2600);audioMatchStart()}
 function startDemo(){jujuReset();demo=true;paused=false;sudden=false;matchT=999;resetTeams();hideBig();frameEl.classList.remove('playing');setupKickoff(Math.random()<.5?0:1)}
-function toMenu(){$('end').classList.add('hidden');$('pause').classList.add('hidden');$('menu').classList.remove('hidden');startDemo()}
+function toMenu(){musicStop();crowdStop();cmStop();$('end').classList.add('hidden');$('pause').classList.add('hidden');$('menu').classList.remove('hidden');startDemo()}
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 function matchComment(a,b,n){const d=a.score-b.score,tot=(a.stats.poss+b.stats.poss)||1,pa=a.stats.poss/tot,P=[],add=(...x)=>P.push(...x);
  const lens=settings.len;
@@ -441,7 +512,7 @@ function matchComment(a,b,n){const d=a.score-b.score,tot=(a.stats.poss+b.stats.p
  if(settings.diff==='chill'&&d<0)add('Lost to CHILL difficulty. Take a sip of water. We will not tell anyone. (Screenshot it.)')}
  return pick(P)}
 let lastCmt='',lastMatch=null;
-function endMatch(){state='ended';paused=false;SFX.whistle();hideBig();const a=teams[0],b=teams[1];
+function endMatch(){state='ended';paused=false;SFX.whistle();hideBig();const a=teams[0],b=teams[1];audioMatchEnd(a,b);
  $('endTitle').textContent=a.score>b.score?'You win!':a.score<b.score?'CPU wins':'Draw';
  $('endTitle').style.color=a.score>b.score?'#ffc61a':a.score<b.score?'#ff6b92':'#fff';
  $('endScore').textContent=a.score+' - '+b.score;
@@ -456,6 +527,7 @@ function goalScored(team){const t=teams[team],con=teams[1-team];t.score++;lastSc
  if(ball.shot&&ball.lastTeam===team)earn(t,'ontarget',8);earn(con,'concede',15);
  ball.fire=0;ball.shot=false;clearEffects();
  setBig('GOAL!',t.color,2600);
+ {const d=t.score-con.score;roar(team===0?'goal':'groan');say(t.score===con.score?'equaliser':d>=3?(team===0?'rout_you':'rout_cpu'):(team===0?'goal_you':'goal_cpu'),3,350)}
  const gx=oppGoalX(team);
  burst(gx,ball.y,70,{color:[t.color,'#fff','#ffc61a','#e0245e','#3ddc84'],kind:'confetti',s0:80,s1:520,l0:1.2,l1:2.4,z0:4,z1:8,g:380,drag:.9,a:team===0?Math.PI:0,spread:1.4});
  ring(gx,ball.y,10,260,.8,t.color)}
@@ -473,7 +545,7 @@ function oppAhead(team,x){const dir=attackDir(team);let n=0;for(const q of teams
 function onPickup(p,sp){const t=teams[p.team],o=teams[1-p.team],lp=t.lastPass;t.lastPass=null;o.lastPass=null;
  if(!ball.noEarn){
   if(ball.lastTeam!==p.team){
-   if(ball.shot&&p.gk){earn(o,'ontarget',8);earn(t,'save',6,p)}
+   if(ball.shot&&p.gk){earn(o,'ontarget',8);earn(t,'save',6,p);roar('ooh');say('save',1)}
    else if(!p.gk&&sp>200)earn(t,'intercept',12,p)}
   else if(lp&&!p.gk){const fw=(p.x-lp.x)*attackDir(p.team),d=hyp(p.x-lp.x,p.y-lp.y);
    if(d>=90&&fw>=120&&oppAhead(p.team,p.x)<lp.ahead)earn(t,'progpass',8,p)}}
@@ -495,7 +567,7 @@ function kickBall(p,dx,dy,speed,lock){const[nx,ny]=norm(dx,dy);ball.owner=null;
 // Shito is spent on the next shot either way; it only ignites from a near-full charge
 function shoot(p,charge,dx,dy){const t=teams[p.team];let sp=520+charge*780;
  const armed=t.rocket>0,fire=armed&&charge>=.85;t.rocket=0;if(fire)sp=1400;
- kickBall(p,dx,dy,sp);ball.shot=true;t.stats.shots++;
+ kickBall(p,dx,dy,sp);ball.shot=true;t.stats.shots++;if(!fire)say('shot',1);
  if(fire){ball.fire=3;SFX.shito();shake=Math.max(shake,reduceMotion?2:6);ring(ball.x,ball.y,6,90,.4,'#ff5a36')}
  else{SFX.shot();if(armed){SFX.fizzle();floatText(p.x,p.y-p.r-14,'Not hot enough','#ff9f43')}}}
 function passTo(p,q){const t=teams[p.team],lead=.25,tx=q.x+q.vx*lead,ty=q.y+q.vy*lead,dx=tx-p.x,dy=ty-p.y,d=hyp(dx,dy);
@@ -541,7 +613,7 @@ let goalUndone=false;
 // Sankofa: go back and fetch it. Right after conceding, the goal is wiped off and your side restarts with the ball
 function reverseGoal(t){const sc=teams[lastScorer];sc.score=Math.max(0,sc.score-1);goalUndone=true;reversals++;goalLog.pop();SFX.sankofa();
  ring(ball.x,ball.y,10,320,.9,PW.sankofa.color);ring(CX,CY,10,260,.9,PW.sankofa.color);shake=Math.max(shake,reduceMotion?2:10);
- hideBig();setupKickoff(t.id);
+ hideBig();setupKickoff(t.id);cmStop();say(t.id===0?'sankofa_you':'sankofa_cpu',3,150);roar(t.id===0?'goal':'groan');
  showBanner((t.id===0?'You: ':'CPU: ')+'SANKOFA! Goal reversed',PW.sankofa.color,2200)}
 function usePower(t,id){const def=PW[id],human=t.id===0&&!demo;
  const no=msg=>{if(human&&msg){showBanner(msg,'#9b93c9',1300);SFX.fizzle()}return false};
@@ -554,7 +626,7 @@ function usePower(t,id){const def=PW[id],human=t.id===0&&!demo;
  t.morale-=cost;t.lastUse[id]=simClock;t.pw[id]=def.cd;t.lock=LOCK;t.stats.powers++;t.stats.used[id]=(t.stats.used[id]||0)+1;
  t.wind={id,p,t:def.wind,max:def.wind,dx:p.fx,dy:p.fy};
  SFX[id]();ring(p.x,p.y,p.r+46,p.r+6,def.wind,def.color);
- showBanner((t.id===0?'You: ':'CPU: ')+def.name+(id==='trotro'?'! Circle! Circle!':'!'),def.color);return true}
+ showBanner((t.id===0?'You: ':'CPU: ')+def.name+(id==='trotro'?'! Circle! Circle!':'!'),def.color);powerSay(id,t);return true}
 // the wind-up is over: the effect lands if it still makes sense, otherwise the Morale is gone
 function landPower(t){const w=t.wind,id=w.id,p=w.p,def=PW[id];t.wind=null;
  const fizzle=()=>{SFX.fizzle();floatText(p.x,p.y-p.r-14,def.name+' wasted','#9b93c9')};
@@ -565,7 +637,7 @@ function landPower(t){const w=t.wind,id=w.id,p=w.p,def=PW[id];t.wind=null;
   case'dumsor':t.dumsor=3;for(const q of teams[1-t.id].players){if(q.gk)continue;q.stun=Math.max(q.stun,3);q.slide=0;q.dash=0;ring(q.x,q.y,q.r+4,q.r+34,.5,def.color)}break;
   case'obolo':p.giant=4;burst(p.x,p.y,18,{color:['#c08bff','#e6d8ff'],s0:60,s1:240,l0:.4,l1:.8});ring(p.x,p.y,10,110,.5,def.color);break;
   case'magnet':{const q=t.id===0&&!demo&&t.ctrl?t.ctrl:p;q.magnet=2.5;ring(q.x,q.y,10,130,.5,def.color);break}
-  case'sankofa':if(ball.owner&&ball.owner.team===t.id)return fizzle();t.sankofa=2;
+  case'sankofa':if(ball.owner&&ball.owner.team===t.id)return fizzle();t.sankofa=2;say('sankofa_back',2);
    for(const q of t.players)if(!q.gk)ring(q.x,q.y,8,70,.4,def.color);break}}
 
 /* ---------- AI ---------- */
@@ -730,7 +802,7 @@ function resolveTackles(){const o=ball.owner;if(!o)return;
   q.tackleCD=.55;
   if(Math.random()<chance){const slid=q.slide>0;ball.owner=q;q.hold=0;q.protect=.5;q.pickupLock=0;o.pickupLock=.5;o.dash=0;
    const[nx,ny]=norm(o.x-q.x,o.y-q.y);o.vx+=nx*240;o.vy+=ny*240;SFX.tackle();
-   ball.shot=false;teams[o.team].lastPass=null;earn(teams[q.team],slid?'slide':'tackle',slid?12:14,q);
+   ball.shot=false;teams[o.team].lastPass=null;earn(teams[q.team],slid?'slide':'tackle',slid?12:14,q);if(slid)say('slide',1);
    burst((o.x+q.x)/2,(o.y+q.y)/2,8,{color:'#fff',s0:50,s1:200,l0:.2,l1:.4})}
   else if(o.giant<=0){const[nx,ny]=norm(o.x-q.x,o.y-q.y);o.vx+=nx*90;o.vy+=ny*90}
   break}}
@@ -753,12 +825,12 @@ function ballPlayers(){const fire=ball.fire>0,sp=hyp(ball.vx,ball.vy);
   const opp=p.team!==ball.lastTeam,nx=dx/(d||1),ny=dy/(d||1);
   // Shito: an opponent body blocks it and a keeper can only parry, nobody catches it
   if(fire){if(!opp||d>=rr)continue;
-   if(!p.gk){p.stun=Math.max(p.stun,2.5);p.slide=0;p.dash=0;ball.vx*=.93;ball.vy*=.93;ball.noEarn=false;
+   if(!p.gk){say('shito_burn',3);p.stun=Math.max(p.stun,2.5);p.slide=0;p.dash=0;ball.vx*=.93;ball.vy*=.93;ball.noEarn=false;
     burst(p.x,p.y,16,{color:['#ff5a36','#ff9f43','#ffd166'],s0:80,s1:300,l0:.3,l1:.7});ring(p.x,p.y,p.r,p.r+40,.4,'#ff5a36');shake=Math.max(shake,reduceMotion?1:4);SFX.tackle();continue}
    const vn=ball.vx*nx+ball.vy*ny;if(vn<0){ball.vx-=2*vn*nx;ball.vy-=2*vn*ny}
    const a=p.gk?rand(-.5,.5):0,c=Math.cos(a),s=Math.sin(a),vx=ball.vx;ball.vx=(vx*c-ball.vy*s)*.45;ball.vy=(vx*s+ball.vy*c)*.45;
    ball.x=p.x+nx*rr;ball.y=p.y+ny*rr;ball.fire=0;p.pickupLock=Math.max(p.pickupLock,.5);
-   if(p.gk){if(ball.shot){earn(teams[1-p.team],'ontarget',8);earn(teams[p.team],'save',6,p)}}else p.stun=Math.max(p.stun,.4);
+   if(p.gk){if(ball.shot){earn(teams[1-p.team],'ontarget',8);earn(teams[p.team],'save',6,p);roar('ooh');say('save',1)}}else p.stun=Math.max(p.stun,.4);
    ball.shot=false;ball.lastTeam=p.team;ball.noEarn=true;
    burst(ball.x,ball.y,10,{color:['#ff5a36','#ff9f43','#fff'],s0:60,s1:240,l0:.2,l1:.5});shake=Math.max(shake,reduceMotion?2:5);SFX.tackle();return}
   const limit=p.magnet>0?900:p.gk?700:600;
@@ -766,7 +838,7 @@ function ballPlayers(){const fire=ball.fire>0,sp=hyp(ball.vx,ball.vy);
   if(d>=rr)continue;
   const vn=ball.vx*nx+ball.vy*ny;
   if(vn<0){ball.vx-=1.65*vn*nx;ball.vy-=1.65*vn*ny;ball.vx+=p.vx*.35;ball.vy+=p.vy*.35;wallFx(Math.abs(vn));
-   if(p.gk&&opp&&ball.shot){earn(teams[1-p.team],'ontarget',8);earn(teams[p.team],'save',6,p);ball.shot=false}}
+   if(p.gk&&opp&&ball.shot){earn(teams[1-p.team],'ontarget',8);earn(teams[p.team],'save',6,p);roar('ooh');say('save',1);ball.shot=false}}
   ball.x=p.x+nx*rr;ball.y=p.y+ny*rr}}
 function updateBall(g){
  if(ball.owner){const p=ball.owner,off=p.r+ball.r+2+(p.heavy>0?20:0),tx=p.x+p.fx*off,ty=p.y+p.fy*off,k=Math.min(1,g*22);
@@ -786,8 +858,9 @@ function checkGoal(){if(ball.y>GY0&&ball.y<GY1){if(ball.x<PX0-ball.r)return 1;if
 function playUpdate(g){
  if(juju.active){matchT=Math.max(matchT,.05);jujuUpdate(g)}
  if(!sudden&&!demo&&!juju.active){matchT-=g;
+  if(matchT<=10&&!CM.l10&&!sudden){CM.l10=true;say('last10',2)}
   if(matchT<=3&&!juju.rolled){juju.rolled=true;if(teams[1].score<teams[0].score&&matchT>0&&Math.random()<.5)jujuCast()}
-  if(matchT<=0&&!juju.active){matchT=0;if(teams[0].score===teams[1].score){sudden=true;showBanner('Level at full time. Next goal wins!','#fff');SFX.whistle()}else{endMatch();return}}}
+  if(matchT<=0&&!juju.active){matchT=0;if(teams[0].score===teams[1].score){sudden=true;showBanner('Level at full time. Next goal wins!','#fff');SFX.whistle();say('golden',3,400)}else{endMatch();return}}}
  simClock+=g;
  for(const t of teams){for(const p of POWERS)t.pw[p.id]=Math.max(0,t.pw[p.id]-g);
   t.rocket=Math.max(0,t.rocket-g);t.dumsor=Math.max(0,t.dumsor-g);t.sankofa=Math.max(0,t.sankofa-g);t.lock=Math.max(0,t.lock-g);
@@ -810,7 +883,7 @@ function update(dt){
  if(state==='kickoff'){stateT-=dt;
   for(const p of ALL)updatePlayer(p,g,false);
   if(!demo){const n=Math.ceil((stateT-.4)/.6);if(n>=1)setBig(String(n),'#fff');else setBig('Go!','#ffc61a',700)}
-  if(stateT<=0){state='play';const a=teams[kickTeam].players[1];take(a);teams[1-kickTeam].players.forEach(p=>p.pickupLock=.6);if(!demo)SFX.whistle();
+  if(stateT<=0){state='play';const a=teams[kickTeam].players[1];take(a);teams[1-kickTeam].players.forEach(p=>p.pickupLock=.6);if(!demo){SFX.whistle();say('kickoff',2,300)}
 }}
  else if(state==='play')playUpdate(g);
  else if(state==='goal'){stateT-=dt;for(const p of ALL)updatePlayer(p,g,false);updateBall(g);
@@ -999,7 +1072,7 @@ function readKeys(){const l=keys.has('ArrowLeft')||keys.has('KeyA'),r=keys.has('
  kbx=(r?1:0)-(l?1:0);kby=(d?1:0)-(u?1:0);syncMove()}
 function syncMove(){let x=kbx+tsx,y=kby+tsy;const m=hyp(x,y);if(m>1){x/=m;y/=m}input.mx=x;input.my=y}
 const SLOT={Digit1:0,Digit2:1,Digit3:2,Numpad1:0,Numpad2:1,Numpad3:2};
-function setPaused(v){if(demo||state==='ended')return;paused=v;$('pause').classList.toggle('hidden',!v);if(v){input.shootHeld=false}}
+function setPaused(v){if(demo||state==='ended')return;paused=v;$('pause').classList.toggle('hidden',!v);if(v){input.shootHeld=false;cmStop()}}
 window.addEventListener('keydown',e=>{
  if(!demo&&!paused&&['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
  if(e.target&&e.target.tagName==='INPUT')return;
@@ -1038,7 +1111,7 @@ window.addEventListener('touchstart',()=>document.body.classList.add('has-touch'
  $('tSwitch').addEventListener('pointerdown',e=>{switchPlayer();e.preventDefault()})})();
 
 /* ---------- menu wiring ---------- */
-function toggleMute(){muted=!muted;$('btnMute').textContent=muted?'Sound off':'Sound on';saveSettings()}
+function toggleMute(){muted=!muted;if(master)master.gain.value=muted?0:.5;if(muted)cmStop();$('btnMute').textContent=muted?'Sound off':'Sound on';saveSettings()}
 function syncSeg(){document.querySelectorAll('#segDiff button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===settings.diff)));
  document.querySelectorAll('#segLen button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.v===settings.len)))}
 $('segDiff').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;settings.diff=b.dataset.v;syncSeg();saveSettings()});
@@ -1099,7 +1172,8 @@ $('btnSend').addEventListener('click',async()=>{if(!shareBlob)return;const m=las
  try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],text:txt,title:'Inposibal'});return}}catch(e){if(e&&e.name==='AbortError')return}
  const a=document.createElement('a');a.href=shareUrl;a.download='inposibal-result.png';document.body.appendChild(a);a.click();a.remove();
  try{await navigator.clipboard.writeText(txt)}catch(e){}});
-syncSeg();buildPicker();
+document.addEventListener('click',e=>{const b=e.target.closest('.segAud button');if(!b)return;settings[b.dataset.v]=!settings[b.dataset.v];saveSettings();applyAudioSettings()});
+applyAudioSettings();syncSeg();buildPicker();
 
 /* ---------- layout + loop ---------- */
 function fit(){const st=$('stage'),cap=$('cap'),coarse=window.matchMedia('(pointer:coarse)').matches;
@@ -1114,7 +1188,7 @@ function fit(){const st=$('stage'),cap=$('cap'),coarse=window.matchMedia('(point
 window.addEventListener('resize',fit);window.addEventListener('orientationchange',()=>setTimeout(fit,150));
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{pitchLayer=null});
 let last=performance.now();
-function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;if(!paused)update(dt);updateHUD();render();requestAnimationFrame(frame)}
+function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;crowdTick();if(!paused)update(dt);updateHUD();render();requestAnimationFrame(frame)}
 fit();startDemo();requestAnimationFrame(frame);
 /*__TEST_HOOK__*/
 })();
