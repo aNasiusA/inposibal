@@ -106,6 +106,21 @@ button:focus-visible{outline:3px solid #fff;outline-offset:2px}
 .cpuload .cpep{width:calc(var(--u)*60px);min-width:36px;height:6px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden}
 .cpuload .cpep b{display:block;height:100%;background:#ff5a36;transform-origin:left;transform:scaleX(0)}
 
+/* practice room */
+.coach{--cc:#ffc61a;position:absolute;left:50%;top:calc(var(--u)*16px);transform:translateX(-50%);width:min(92%,calc(var(--u)*660px));padding:calc(var(--u)*12px) calc(var(--u)*20px);
+  border-radius:calc(var(--u)*16px);background:rgba(24,16,52,.94);border:2px solid var(--cc);text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.35);display:none;z-index:3}
+.frame.drill .coach{display:block}
+.coach .ct{font-family:'Bowlby One',Impact,sans-serif;font-size:max(15px,calc(var(--u)*26px));color:var(--cc);line-height:1.1}
+.coach .cb{margin-top:.3em;font-weight:700;font-size:max(12px,calc(var(--u)*19px));color:#efeaff;line-height:1.3}
+.coach .row{margin-top:.5em}.coach .row:empty{display:none}
+.coach .btn{font-size:max(13px,calc(var(--u)*20px))}
+.frame.drill .hud,.frame.drill .cpuload,.frame.drill .cmcap{display:none}
+.frame.drill .banner{top:calc(var(--u)*170px)}
+.pw.pulse{animation:pwpulse .9s ease-in-out infinite}
+@keyframes pwpulse{0%,100%{box-shadow:inset 0 0 0 3px var(--pc),0 0 0 0 var(--pc)}50%{box-shadow:inset 0 0 0 3px var(--pc),0 0 0 calc(var(--u)*10px) transparent}}
+@media (prefers-reduced-motion: reduce){ .pw.pulse{animation:none;box-shadow:inset 0 0 0 3px var(--pc),0 0 0 4px var(--pc)} }
+.pdesc .btn{margin-top:.6em;font-size:max(13px,calc(var(--u)*20px))}
+
 /* touch */
 .touch{display:none}
 body.has-touch .frame.playing .touch{display:block}
@@ -202,6 +217,7 @@ h2{font-family:'Bowlby One',Impact,sans-serif;font-weight:400;font-size:max(28px
     <div class="banner" id="banner"></div>
     <div class="cmcap" id="cmCap"></div>
     <div class="big" id="big"></div>
+    <div class="coach" id="coach"><div class="ct" id="coachT"></div><div class="cb" id="coachB"></div><div class="row" id="coachRow"></div></div>
     <div class="powers" id="powers"></div>
     <div class="morale" id="morale"><i id="pepFill"></i><span id="pepNum">Morale 30</span></div>
 
@@ -233,7 +249,7 @@ h2{font-family:'Bowlby One',Impact,sans-serif;font-weight:400;font-size:max(28px
               <button type="button" data-v="60">1 min</button><button type="button" data-v="120">2 min</button><button type="button" data-v="240">4 min</button>
             </div>
           </div>
-          <button class="go" id="btnStart" type="button">Kick off</button>
+          <button class="go" id="btnStart" type="button">Kick off</button> <button class="btn alt" id="btnPractice" type="button">Practice</button>
           <dl class="keys">
             <dt>Move</dt><dd>WASD or arrow keys</dd>
             <dt>Shoot</dt><dd>Hold Space, release to fire</dd>
@@ -481,11 +497,11 @@ function jujuUpdate(g){if(!juju.active)return;juju.t+=g;
    burst(PX0,b.ty,50,{color:['#b86bff','#fff','#ffc61a','#e0245e'],kind:'confetti',s0:80,s1:480,l0:1,l1:2,z0:4,z1:8,g:380,drag:.9,a:0,spread:1.4});ring(PX0,b.ty,10,200,.7,'#b86bff');floatText(PX0+60,b.ty,'GOAL','#b86bff')}}
  if(juju.landed>=juju.n&&juju.t>juju.balls[juju.balls.length-1].delay+.9){juju.active=false;matchT=0}}
 function playerName(){return (settings.name||'').trim()||'Player'}
-function startMatch(){jujuReset();demo=false;document.querySelector('#hud .tm .n').textContent=playerName();paused=false;sudden=false;matchT=settings.len;resetTeams();hideBig();bannerEl.classList.remove('show');
+function startMatch(){drill=null;frameEl.classList.remove('drill');jujuReset();demo=false;document.querySelector('#hud .tm .n').textContent=playerName();paused=false;sudden=false;matchT=settings.len;resetTeams();hideBig();bannerEl.classList.remove('show');
  frameEl.classList.add('playing');$('menu').classList.add('hidden');$('end').classList.add('hidden');$('pause').classList.add('hidden');
  buildPowerBar();buildCpuLoad();setupKickoff(0);
  showBanner('CPU picked '+teams[1].loadout.map(id=>PW[id].name).join(', '),'#ff6b92',2600);audioMatchStart()}
-function startDemo(){jujuReset();demo=true;paused=false;sudden=false;matchT=999;resetTeams();hideBig();frameEl.classList.remove('playing');setupKickoff(Math.random()<.5?0:1)}
+function startDemo(){drill=null;frameEl.classList.remove('drill');jujuReset();demo=true;paused=false;sudden=false;matchT=999;resetTeams();hideBig();frameEl.classList.remove('playing');setupKickoff(Math.random()<.5?0:1)}
 function toMenu(){musicStop();crowdStop();cmStop();$('end').classList.add('hidden');$('pause').classList.add('hidden');$('menu').classList.remove('hidden');startDemo()}
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 function matchComment(a,b,n){const d=a.score-b.score,tot=(a.stats.poss+b.stats.poss)||1,pa=a.stats.poss/tot,P=[],add=(...x)=>P.push(...x);
@@ -577,7 +593,8 @@ function shoot(p,charge,dx,dy){const t=teams[p.team];let sp=520+charge*780;
  const armed=t.rocket>0,fire=armed&&charge>=.5;t.rocket=0;if(fire)sp=1400;
  kickBall(p,dx,dy,sp);ball.shot=true;t.stats.shots++;if(!fire)say('shot',1);
  if(fire){ball.fire=3;SFX.shito();shake=Math.max(shake,reduceMotion?2:6);ring(ball.x,ball.y,6,90,.4,'#ff5a36')}
- else{SFX.shot();if(armed){SFX.fizzle();floatText(p.x,p.y-p.r-14,'Not hot enough','#ff9f43')}}}
+ else{SFX.shot();if(armed){SFX.fizzle();floatText(p.x,p.y-p.r-14,'Not hot enough','#ff9f43')}}
+ if(drill&&p.team===0)drillEvent('shot',fire)}
 function passTo(p,q){const t=teams[p.team],lead=.25,tx=q.x+q.vx*lead,ty=q.y+q.vy*lead,dx=tx-p.x,dy=ty-p.y,d=hyp(dx,dy);
  kickBall(p,dx,dy,clamp(d*1.7+220,320,540)*1);SFX.pass();
  t.lastPass={x:p.x,y:p.y,ahead:oppAhead(p.team,p.x)};
@@ -624,7 +641,7 @@ function startRewind(t){state='rewind';timeScaleTarget=1;timeScale=1;ball.owner=
  rewind={t,i:hist.length-1,end:Math.max(0,goalIdx-150)};fnoise(1.1,.45,5000,300,'bandpass',1.2)}
 function rewindStep(){const R=rewind;if(!R)return;R.i=Math.max(R.end,R.i-2);const h=hist[R.i];
  if(h){ball.x=h.b[0];ball.y=h.b[1];ball.owner=null;ball.vx=ball.vy=0;ALL.forEach((p,k)=>{const q=h.p[k];if(!q)return;p.x=q[0];p.y=q[1];p.vx=p.vy=0;p.fx=q[2];p.fy=q[3]})}
- if(R.i<=R.end){rewind=null;hist.length=0;setupKickoff(R.t.id)}}
+ if(R.i<=R.end){rewind=null;hist.length=0;if(drill)drillEvent('rewound');else setupKickoff(R.t.id)}}
 function drawRewind(){if(state!=='rewind')return;const cs=canvas.width/W,w=canvas.width,h=canvas.height;ctx.save();ctx.setTransform(1,0,0,1,0,0);
  ctx.fillStyle='rgba(224,176,74,.16)';ctx.fillRect(0,0,w,h);ctx.fillStyle='rgba(0,0,0,.14)';for(let y=0;y<h;y+=7*cs)ctx.fillRect(0,y,w,2.5*cs);
  const by=((time*1100)%(H+240)-120)*cs;ctx.fillStyle='rgba(255,255,255,.16)';ctx.fillRect(0,by,w,44*cs);ctx.fillRect(0,(by+h*.45)%h,w,14*cs);
@@ -660,6 +677,140 @@ function landPower(t){const w=t.wind,id=w.id,p=w.p,def=PW[id];t.wind=null;
   case'sankofa':if(ball.owner&&ball.owner.team===t.id)return fizzle();t.sankofa=2;say('sankofa_back',2);
    for(const q of t.players)if(!q.gk)ring(q.x,q.y,8,70,.4,def.color);break}}
 
+/* ---------- practice room ---------- */
+// A drill is one power in a scripted scene: full Morale, no clock, no CPU powers, and a coach card saying what to do next.
+let drill=null;
+const coachEl=$('coach'),coachT=$('coachT'),coachB=$('coachB'),coachRow=$('coachRow');
+const touchy=()=>document.body.classList.contains('has-touch');
+function coach(title,body,color,btns){coachT.textContent=title;coachB.textContent=body||'';coachEl.style.setProperty('--cc',color||'#ffc61a');coachRow.innerHTML='';
+ for(const[label,fn,alt]of btns||[]){const b=document.createElement('button');b.type='button';b.className='btn'+(alt?' alt':'');b.textContent=label;b.addEventListener('click',fn);coachRow.appendChild(b)}}
+function pulse(on){const b=drill&&pbtn[drill.id];if(b)b.root.classList.toggle('pulse',on)}
+function park(p,x,y,role){p.x=x;p.y=y;p.vx=p.vy=p.dx=p.dy=0;p.fx=attackDir(p.team);p.fy=0;p.stun=p.slide=p.recover=p.pickupLock=p.tackleCD=p.hitCD=p.protect=p.charge=p.hold=0;p.scale=1;p.r=p.base;p.role=role==='free'?null:'hold'}
+const DRILL_PARK=[[[PX0+300,PY0+60],[PX0+300,PY1-60]],[[PX1-140,PY0+50],[PX1-140,PY1-50],[PX1-220,PY0+120]]];
+// s.you: where you start; s.opp / s.mine: CPU and own outfield players as [x,y,'free'?] (they stand still unless 'free');
+// s.give: index of the CPU player who starts with the ball; s.loose: [x,y] for a loose ball. Default: you have the ball.
+function drillScene(s){clearEffects();hist.length=0;hideBig();goalLog=[];goalUndone=false;rewind=null;
+ for(const t of teams){t.score=0;t.morale=MOR_MAX;t.lastUse={};t.lock=0;t.wind=null;t.ctrl=null;t.chaser=null;t.recv=null;t.recvPt=null;POWERS.forEach(p=>t.pw[p.id]=0)}
+ const a=teams[0].players,b=teams[1].players;
+ park(a[0],PX0+48,CY);park(b[0],PX1-48,CY);park(a[1],s.you[0],s.you[1]);
+ for(let i=0;i<2;i++){const q=(s.mine||[])[i]||DRILL_PARK[0][i];park(a[2+i],q[0],q[1],q[2])}
+ for(let i=1;i<4;i++){const q=(s.opp||[])[i-1]||DRILL_PARK[1][i-1];park(b[i],q[0],q[1],q[2])}
+ const own=s.give!==undefined?b[s.give+1]:s.loose?null:a[1],bx=own?own.x:s.loose[0],by=own?own.y:s.loose[1];
+ ball.x=bx;ball.y=by;ball.vx=ball.vy=0;ball.owner=null;ball.fire=0;ball.shot=false;ball.noEarn=false;ball.lastTeam=own?own.team:1;
+ parts.length=0;rings.length=0;later.length=0;if(own)take(own);teams[0].ctrl=a[1];state='play';timeScale=timeScaleTarget=1}
+function startDrill(id,again){const def=DRILLS[id];if(!def)return;initAudio();jujuReset();demo=false;paused=false;sudden=false;matchT=999;resetTeams();hideBig();bannerEl.classList.remove('show');
+ teams[0].loadout=[id];teams[1].loadout=[];drill={id,def,step:'',t:0,said:0,done:false,again:!!again};
+ frameEl.classList.add('playing','drill');for(const m of['menu','end','pause'])$(m).classList.add('hidden');
+ buildPowerBar();def.setup();def.start(drill)}
+function drillGo(d,step){d.step=step;d.t=0;d.said=0}
+function drillRetry(d,title,body,to){drillGo(d,'retry');d.to=to;pulse(false);coach(title,body,'#ff9f43')}
+function drillWin(d,title,body){d.done=true;pulse(false);const k=Object.keys(DRILLS),nx=k[k.indexOf(d.id)+1];
+ coach(title,body,'#3ddc84',[...(nx?[['Next: '+PW[nx].name,()=>startDrill(nx)]]:[]),['Again',()=>startDrill(d.id,true),!!nx],['Back',toMenu,true]])}
+function drillTick(g){const d=drill;d.t+=g;teams[0].morale=teams[1].morale=MOR_MAX;if(d.done)return;
+ if(d.step==='retry'){if(d.t>1.6){d.def.setup();d.def[d.to](d)}return}
+ d.def.tick(d,g)}
+const lostBall=()=>ball.owner&&ball.owner.team===1;
+const usePrompt=()=>touchy()?'Tap the glowing power':'Press 1';
+function drillEvent(n,a){if(drill&&!drill.done)drill.def.event(drill,n,a)}
+const DRILLS={
+ shito:{
+  setup(){drillScene({you:[830,CY],opp:[[950,CY]]})},
+  start(d){this[d.again?'arm':'intro'](d)},
+  intro(d){drillGo(d,'intro');coach('Take a normal shot',(touchy()?'Hold Shoot, then let go.':'Hold Space, then let go.')+' A defender is standing in the way.')},
+  arm(d){drillGo(d,'arm');pulse(true);coach('Now arm Shito',(touchy()?'Tap the glowing power.':'Press 1.')+' It costs Morale, and yours is full in practice.')},
+  event(d,n,fire){
+   if(n==='shot'){
+    if(d.step==='intro')drillGo(d,'blocked');
+    else if(d.step==='arm')drillRetry(d,'That was a plain shot','Arm Shito first, then shoot.','arm');
+    else if(d.step==='fire'){if(fire)drillGo(d,'flight');else drillRetry(d,'Not hot enough','Hold the charge until the ring turns orange.','arm')}}
+   else if(d.step==='flight'&&n==='burn')drillWin(d,'Burned straight through!','Hold the charge past 50% and the shot ignites. Anyone in its path is stunned for 2.5s. Keepers can still parry it.');
+   else if(d.step==='flight'&&n==='goal')drillWin(d,'Goal!','Shito shots ignite when you hold the charge past 50%. Use one when a defender stands between you and the goal.')},
+  tick(d){const t=teams[0],s=d.step;
+   if((s==='intro'||s==='arm'||s==='fire')&&ball.owner&&ball.owner.team===1)return drillRetry(d,'Lost the ball','Setting it up again.',s==='intro'?'intro':'arm');
+   if(s==='arm'&&(t.wind||t.rocket>0)){drillGo(d,'fire');d.armed=false;pulse(false);coach('Hold the shot','Hold '+(touchy()?'Shoot':'Space')+' until the ring around you turns orange, then let go.',PW.shito.color)}
+   else if(s==='fire'){if(t.rocket>0)d.armed=true;if(d.armed&&t.rocket<1.2)t.rocket=1.2;
+    if(!d.armed&&!t.wind&&d.t>.3)drillRetry(d,'Shito needs the ball','Keep it at your feet while you arm it.','arm')}
+   else if(s==='blocked'){if(d.t>1.2&&!d.said){d.said=1;coach('Blocked','A normal shot cannot get past a defender. Shito can.','#ff9f43')}
+    if(d.t>3.4){this.setup();this.arm(d)}}
+   else if(s==='flight'&&d.t>2.4)drillRetry(d,'Missed the defender','Face the defender and shoot straight at them.','arm');
+   else if(s==='retry'&&d.t>1.6){this.setup();this[d.to](d)}}},
+ dumsor:{
+  setup(){drillScene({you:[620,CY],opp:[[790,CY-130,'free'],[790,CY+130,'free'],[740,CY,'free']]})},
+  start(d){this.use(d)},
+  use(d){drillGo(d,'use');pulse(true);coach('Three defenders closing in',usePrompt()+' and cut the lights.')},
+  event(d,n,a){if(d.step==='dark'&&(n==='shot'||(n==='goal'&&a===0)))drillWin(d,'Lights out!','Dumsor freezes every opposing outfielder for 3s while you run free. It is a heavy power, so save it for a clear run at goal.')},
+  tick(d){const t=teams[0],s=d.step;
+   if(s==='use'){if(lostBall())return drillRetry(d,'Lost the ball','Setting it up again.','use');
+    if(t.wind||t.dumsor>0){drillGo(d,'dark');pulse(false);coach('Lights out!','They are frozen for 3s. Run at goal and shoot!',PW.dumsor.color)}}
+   else if(s==='dark'&&!t.wind&&t.dumsor<=0&&d.t>.6)drillRetry(d,'Too slow','Shoot before the lights come back on.','use')}},
+ trotro:{
+  setup(){drillScene({you:[540,CY],opp:[[700,CY-34],[700,CY+34],[780,CY]]})},
+  start(d){this.use(d)},
+  use(d){drillGo(d,'use');pulse(true);coach('A wall of defenders','Face them, then '+usePrompt().toLowerCase()+'. Your direction locks once you go, so line up first.')},
+  event(){},
+  tick(d){const t=teams[0],you=t.players[1],s=d.step;
+   if(s==='use'){if(lostBall())return drillRetry(d,'Lost the ball','Setting it up again.','use');
+    if(t.wind||you.dash>0){drillGo(d,'rush');pulse(false);coach('Here we go!','',PW.trotro.color)}}
+   else if(s==='rush'){const n=teams[1].players.filter(q=>!q.gk&&q.stun>1).length;
+    if(n>=2)drillWin(d,'Flattened '+n+' defenders!','Trotro rush bursts you down your lane and leaves everyone it hits dazed for 2s. Use it when defenders block your way.');
+    else if(d.t>1.8&&!t.wind&&you.dash<=0)drillRetry(d,'Not enough of them','Face the wall head on before you go.','use')}}},
+ azonto:{
+  setup(){drillScene({you:[540,CY],opp:[[780,CY-110,'free'],[820,CY+110,'free']]})},
+  start(d){this.use(d)},
+  use(d){drillGo(d,'use');pulse(true);d.score=0;coach('Defenders closing in',usePrompt()+', then flick the stick sideways just as one reaches you.')},
+  event(d,n,a){if(d.step!=='dance')return;
+   if(n==='cut'&&a<150){d.score++;floatText(teams[0].players[1].x,teams[0].players[1].y-30,'Nice cut!','#3ddc84')}
+   else if(n==='dodge'){d.score+=2;floatText(teams[0].players[1].x,teams[0].players[1].y-30,'Tackle missed!','#3ddc84')}
+   if(d.score>=2)drillWin(d,'Dodged!','Every sharp cut bursts you away, and a tackle that lands in the middle of a cut misses. Cut when the defender is close, not early.')},
+  tick(d){const t=teams[0],you=t.players[1],s=d.step;
+   if(s==='use'){if(lostBall())return drillRetry(d,'Lost the ball','Setting it up again.','use');
+    if(t.wind||you.azonto>0){drillGo(d,'dance');d.score=0;pulse(false);coach('Cut when they close in','Swing the stick sharply sideways as a defender reaches you. Two good cuts to pass.',PW.azonto.color)}}
+   else if(s==='dance'){if(lostBall())return drillRetry(d,'Tackled','Cut sooner, just as they reach you.','use');
+    if(!t.wind&&you.azonto<=0&&d.t>.4)drillRetry(d,'The dance ran out','Cut sharply as a defender reaches you.','use')}}},
+ obolo:{
+  setup(){drillScene({you:[520,CY],opp:[[700,CY]],give:0})},
+  start(d){this.use(d)},
+  use(d){drillGo(d,'use');pulse(true);coach('Win the ball back','The CPU player has it. '+usePrompt()+' for Obolo, then run straight into them.')},
+  event(){},
+  tick(d){const t=teams[0],you=t.players[1],s=d.step;
+   if(s==='use'&&(t.wind||you.giant>0)){drillGo(d,'chop');pulse(false);coach('Chop well!','Shoulder into them. Obolo lasts 4s.',PW.obolo.color)}
+   else if(s==='chop'){if(ball.owner&&ball.owner.team===0)drillWin(d,'Ball won!','While Obolo is on, shoulder-to-shoulder tackles go your way and you hold the ball better under pressure. You run slower, so use it up close.');
+    else if(!t.wind&&you.giant<=0&&d.t>.5)drillRetry(d,'Obolo wore off','Go in as soon as it lands.','use')}}},
+ magnet:{
+  setup(){drillScene({you:[560,CY],loose:[900,CY-80]})},
+  launch(){const y=teams[0].players[1],ox=900,oy=CY-80,[nx,ny]=norm(y.x-ox,y.y+40-oy);ball.x=ox;ball.y=oy;ball.owner=null;ball.vx=nx*820;ball.vy=ny*820;ball.lastTeam=1;ball.shot=false;ring(ox,oy,6,60,.4,PW.magnet.color);SFX.pass()},
+  start(d){if(d.again)this.use(d);else{drillGo(d,'intro');d.sent=false;coach('A fast ball is coming','Stand in its path and try to trap it.')}},
+  use(d){drillGo(d,'use');pulse(true);coach('Arm Ball magnet',usePrompt()+', then stand still and let the next ball come to you.')},
+  event(){},
+  tick(d){const t=teams[0],you=t.players[1],s=d.step;
+   if(s==='intro'){if(!d.sent&&d.t>1.2){d.sent=true;this.launch()}
+    if(d.t>4.2&&!d.said){d.said=1;coach('Too fast to control','Fast balls bounce off your first touch. Magnet fixes that.','#ff9f43')}
+    if(d.t>6.4){this.setup();this.use(d)}}
+   else if(s==='use'){if(t.wind||you.magnet>0){drillGo(d,'catch');d.sent=false;pulse(false);coach('Magnet on!','Stand still and let the ball come to you.',PW.magnet.color)}}
+   else if(s==='catch'){if(!d.sent&&d.t>.3){d.sent=true;this.launch()}
+    if(ball.owner&&ball.owner.team===0)drillWin(d,'Trapped it!','Ball magnet gives you a sticky first touch for 2.5s: you trap fast and loose balls from further away. It does nothing against a dribbler.');
+    else if(d.sent&&((!ball.owner&&hyp(ball.vx,ball.vy)<8)||(!t.wind&&you.magnet<=0)))drillRetry(d,'It slipped past','Stand in its path, close to the ball line.','use')}}},
+ sankofa:{
+  setup(){drillScene({you:[760,CY+90],mine:[[820,CY-110],[880,CY+10]],opp:[[600,CY]],give:0})},
+  start(d){this.use(d)},
+  use(d){drillGo(d,'use');pulse(true);coach('Out of position!','The CPU is about to run at your goal. '+usePrompt()+' for Sankofa and your team sprints back.')},
+  B(d,msg){drillScene({you:[760,CY],opp:[[260,CY+10]],give:0});teams[0].players[0].stun=2;drillGo(d,'script');pulse(false);
+   coach(msg?'Window missed':'Now the big one',msg||'The CPU is through on goal. Let it go in...')},
+  concede(d){goalScored(1);const t=teams[0];t.pw.sankofa=0;t.lastUse={};drillGo(d,'rev');pulse(true);coach('GOAL! Not so fast',usePrompt()+' now to reverse it.',PW.sankofa.color)},
+  event(d,n,a){
+   if(n==='goal'&&a===1&&(d.step==='back'||d.step==='shot'))this.concede(d);
+   else if(n==='rewound'&&d.step==='rev'){state='play';drillWin(d,'Goal wiped!','Use Sankofa right after conceding and the goal is reversed: the score is wiped and you restart with the ball. You only have a few seconds, so do not wait.')}
+   else if(n==='goalover')this.B(d,'The GOAL! window is short. Press Sankofa the moment it goes in.')},
+  tick(d){const t=teams[0],s=d.step;
+   if(s==='use'){if(t.wind||t.sankofa>0){const a=t.players,b=teams[1].players;a[2].role=a[3].role=b[1].role=null;drillGo(d,'back');pulse(false);coach('Sprint back!','Your team runs goal-side for 2s. Win it back or stop the shot.',PW.sankofa.color)}}
+   else if(s==='back'){if(ball.owner&&ball.owner.team===0){drillGo(d,'won');coach('Won it back!','Sankofa put your team goal-side. Next: what it does after a goal.','#3ddc84')}
+    else if(d.t>7){drillGo(d,'won');coach('Held them off','Sankofa gets your team goal-side fast. Next: what it does after a goal.','#3ddc84')}}
+   else if(s==='won'){if(d.t>2.4)this.B(d)}
+   else if(s==='script'){if(d.t>1.3){const q=teams[1].players[1];shoot(q,.9,PX0-q.x,GY0+25-q.y);drillGo(d,'shot')}}
+   else if(s==='shot'&&d.t>4)this.B(d,'Try again.')}}
+};
+function practiceFor(id){const k=DRILLS[id]?id:Object.keys(DRILLS)[0];startDrill(k)}
+
 /* ---------- AI ---------- */
 function nearestOppDist(team,x,y){let m=1e9;for(const q of teams[1-team].players){if(q.stun>0||hidden(q))continue;const d=hyp(q.x-x,q.y-y);if(d<m)m=d}return m}
 function interceptPoint(p){const k=1.15,sp=p.speed*(p.team===1?DIFF[settings.diff].speed:.96);let px=ball.x,py=ball.y;
@@ -691,6 +842,7 @@ function aiKeeper(p,dt,D){const gx=ownGoalX(p.team),dir=attackDir(p.team);
  steer(p,tx,ty)}
 function aiControl(p,dt){const t=teams[p.team],D=p.team===1?DIFF[settings.diff]:DIFF.pro;
  if(p.gk){aiKeeper(p,dt,D);return}
+ if(drill&&p.role==='hold'){p.dx=p.dy=0;return}
  if(t.recv===p&&!ball.owner){const ip=interceptPoint(p),dx=ip[0]-p.x,dy=ip[1]-p.y,d=hyp(dx,dy);if(d>6){p.dx=dx/d;p.dy=dy/d}return}
  const dir=attackDir(p.team),gx=oppGoalX(p.team),ogx=ownGoalX(p.team),owner=ball.owner;
  if(owner===p){
@@ -791,7 +943,7 @@ function updatePlayer(p,dt,active){
  // Azonto: a change of direction of 60 degrees or more is a cut; tackles landing in its 0.15s window miss
  let cut=false;
  if(p.azonto>0&&ball.owner===p&&p.cutCD<=0){const m=hyp(p.dx,p.dy);if(m>.5){const nx=p.dx/m,ny=p.dy/m;
-  if(nx*p.azDX+ny*p.azDY<.5){cut=true;p.cut=.15;p.cutCD=.4;p.azDX=nx;p.azDY=ny;p.fx=nx;p.fy=ny;SFX.cut();
+  if(nx*p.azDX+ny*p.azDY<.5){cut=true;p.cut=.15;p.cutCD=.4;p.azDX=nx;p.azDY=ny;p.fx=nx;p.fy=ny;SFX.cut();if(drill)drillEvent('cut',nearestOppDist(p.team,p.x,p.y));
    burst(p.x,p.y-p.r,2,{kind:'note',color:'#3ddc84',a:-Math.PI/2,spread:.8,s0:40,s1:90,l0:.6,l1:.9,z0:16,z1:20,drag:1})}}}
  if(cut){p.vx=p.dx*sp*1.25;p.vy=p.dy*sp*1.25}else{p.vx+=(p.dx*sp-p.vx)*k;p.vy+=(p.dy*sp-p.vy)*k}
  if(hyp(p.dx,p.dy)>.15){const[nx,ny]=norm(p.dx,p.dy),f=Math.min(1,dt*(p.giant>0?7:15));const[ax,ay]=norm(p.fx+(nx-p.fx)*f,p.fy+(ny-p.fy)*f);p.fx=ax;p.fy=ay}
@@ -806,7 +958,7 @@ function resolveTackles(){const o=ball.owner;if(!o)return;
   const d=hyp(q.x-o.x,q.y-o.y);if(d>=q.r+o.r+4)continue;
   const behind=((q.x-o.x)*o.fx+(q.y-o.y)*o.fy)<0;
   if(o.azonto>0&&o.cut>0&&!(q.slide>0&&behind)){q.tackleCD=.8;q.stun=Math.max(q.stun,.45);q.slide=0;
-   burst(q.x,q.y,3,{kind:'note',color:'#3ddc84',a:-Math.PI/2,spread:1,s0:40,s1:90,l0:.6,l1:.9,z0:16,z1:20,drag:1});SFX.tackle();continue}
+   burst(q.x,q.y,3,{kind:'note',color:'#3ddc84',a:-Math.PI/2,spread:1,s0:40,s1:90,l0:.6,l1:.9,z0:16,z1:20,drag:1});SFX.tackle();if(drill)drillEvent('dodge');continue}
   // Trotro rush: a defender already standing in the lane takes the ball
   if(o.dash>0)continue;
   const inLane=false;
@@ -845,7 +997,7 @@ function ballPlayers(){const fire=ball.fire>0,sp=hyp(ball.vx,ball.vy);
   const opp=p.team!==ball.lastTeam,nx=dx/(d||1),ny=dy/(d||1);
   // Shito: an opponent body blocks it and a keeper can only parry, nobody catches it
   if(fire){if(!opp||d>=rr)continue;
-   if(!p.gk){say('shito_burn',3);p.stun=Math.max(p.stun,2.5);p.slide=0;p.dash=0;ball.vx*=.93;ball.vy*=.93;ball.noEarn=false;
+   if(!p.gk){if(drill)drillEvent('burn');say('shito_burn',3);p.stun=Math.max(p.stun,2.5);p.slide=0;p.dash=0;ball.vx*=.93;ball.vy*=.93;ball.noEarn=false;
     burst(p.x,p.y,16,{color:['#ff5a36','#ff9f43','#ffd166'],s0:80,s1:300,l0:.3,l1:.7});ring(p.x,p.y,p.r,p.r+40,.4,'#ff5a36');shake=Math.max(shake,reduceMotion?1:4);SFX.tackle();continue}
    const vn=ball.vx*nx+ball.vy*ny;if(vn<0){ball.vx-=2*vn*nx;ball.vy-=2*vn*ny}
    const a=p.gk?rand(-.5,.5):0,c=Math.cos(a),s=Math.sin(a),vx=ball.vx;ball.vx=(vx*c-ball.vy*s)*.45;ball.vy=(vx*s+ball.vy*c)*.45;
@@ -876,8 +1028,9 @@ function updateBall(g){
 function checkGoal(){if(ball.y>GY0&&ball.y<GY1){if(ball.x<PX0-ball.r)return 1;if(ball.x>PX1+ball.r)return 0}return-1}
 
 function playUpdate(g){
+ if(drill)drillTick(g);
  if(juju.active){matchT=Math.max(matchT,.05);jujuUpdate(g)}
- if(!sudden&&!demo&&!juju.active){matchT-=g;
+ if(!sudden&&!demo&&!juju.active&&!drill){matchT-=g;
   if(matchT<=10&&!CM.l10&&!sudden){CM.l10=true;say('last10',2)}
   if(matchT<=3&&!juju.rolled){juju.rolled=true;if(teams[1].score<teams[0].score&&matchT>0&&Math.random()<.5)jujuCast()}
   if(matchT<=0&&!juju.active){matchT=0;if(teams[0].score===teams[1].score){sudden=true;showBanner('Level at full time. Next goal wins!','#fff');SFX.whistle();say('golden',3,400)}else{endMatch();return}}}
@@ -888,11 +1041,11 @@ function playUpdate(g){
   t.recvT=Math.max(0,t.recvT-g);if(ball.owner||t.recvT<=0){t.recv=null;t.recvPt=null}}
  if(!demo)assignControl(teams[0],g);
  pickChasers();
- for(const t of teams)if(demo||t.id===1)aiPowers(t,g);
+ if(!drill)for(const t of teams)if(demo||t.id===1)aiPowers(t,g);
  for(const p of ALL)updatePlayer(p,g,true);
  separatePlayers();resolveTackles();updateBall(g);trackBeat();
  if(ball.owner)teams[ball.owner.team].stats.poss+=g;
- const sc=checkGoal();if(sc>=0)goalScored(sc)}
+ const sc=checkGoal();if(sc>=0){if(drill)drillEvent('goal',sc);else goalScored(sc)}}
 
 function update(dt){
  time+=dt;
@@ -910,7 +1063,7 @@ function update(dt){
  else if(state==='goal'){stateT-=dt;for(const p of ALL)updatePlayer(p,g,false);updateBall(g);
   if(stateT<2.2)timeScaleTarget=1;
   if(!demo&&lastScorer===0&&!goalUndone&&stateT<2.6&&stateT>2.2){const c=teams[1],D=DIFF[settings.diff];if(c.loadout.includes('sankofa')&&c.pw.sankofa<=0&&c.morale>=powerCost(c,'sankofa')&&Math.random()<g*D.moraleUse*1.2)usePower(c,'sankofa')}
-  if(stateT<=0){hideBig();if(sudden&&!demo){endMatch()}else setupKickoff(1-lastScorer)}}
+  if(stateT<=0){hideBig();if(sudden&&!demo){endMatch()}else if(drill)drillEvent('goalover');else setupKickoff(1-lastScorer)}}
  if(!demo&&(state==='play'||state==='goal'))histPush();
  for(let i=parts.length-1;i>=0;i--){const q=parts[i];q.life+=g;if(q.life>=q.max){parts.splice(i,1);continue}
   q.vy+=q.g*g;const k=Math.exp(-q.drag*g);q.vx*=k;q.vy*=k;q.x+=q.vx*g;q.y+=q.vy*g;q.rot+=g*8}
@@ -1055,7 +1208,8 @@ function buildPicker(){const list=$('plist');list.innerHTML='';
  POWERS.forEach(p=>{const b=document.createElement('button');b.type='button';b.style.setProperty('--pc',p.color);b.dataset.id=p.id;
   b.innerHTML='<span class="ic">'+p.icon+'</span><span><b>'+p.name+'</b><em class="meta">'+p.cat+' \u00b7 '+TIER[p.tier]+' Morale \u00b7 '+p.cd+'s cooldown</em><small>'+p.blurb+'</small></span><span class="tick"></span>';
   b.addEventListener('click',()=>{showDesc(p.id);togglePick(p.id)});list.appendChild(b)});showDesc(POWERS[0].id);syncPicks()}
-function showDesc(id){const p=PW[id],d=$('pdesc');d.style.setProperty('--pc',p.color);d.innerHTML='<b>'+p.name+'</b><em>'+p.cat+' \u00b7 '+TIER[p.tier]+' Morale \u00b7 '+p.cd+'s cooldown</em>'+p.blurb}
+let shownId='';
+function showDesc(id){const p=PW[id],d=$('pdesc');shownId=id;{const bp=$('btnPractice');if(bp)bp.textContent='Practice '+PW[DRILLS[id]?id:Object.keys(DRILLS)[0]].name}d.style.setProperty('--pc',p.color);d.innerHTML='<b>'+p.name+'</b><em>'+p.cat+' \u00b7 '+TIER[p.tier]+' Morale \u00b7 '+p.cd+'s cooldown</em>'+p.blurb+(DRILLS[id]?'<br><button class="btn alt" type="button" data-practice="'+id+'">Practice this power</button>':'')}
 let pickMsgT=0;
 function pickMsg(m){$('pickCount').textContent=m;clearTimeout(pickMsgT);pickMsgT=setTimeout(syncPicks,1900)}
 function togglePick(id){const L=settings.loadout,i=L.indexOf(id);
@@ -1139,6 +1293,8 @@ function syncSeg(){document.querySelectorAll('#segDiff button').forEach(b=>b.set
 $('segDiff').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;settings.diff=b.dataset.v;syncSeg();saveSettings()});
 $('segLen').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;settings.len=+b.dataset.v;syncSeg();saveSettings()});
 $('btnStart').addEventListener('click',()=>{if(settings.loadout.length!==3)return;initAudio();startMatch()});
+$('pdesc').addEventListener('click',e=>{const b=e.target.closest('[data-practice]');if(b)startDrill(b.dataset.practice)});
+$('btnPractice').addEventListener('click',()=>practiceFor(shownId));
 $('btnPause').addEventListener('click',()=>setPaused(!paused));
 $('btnMute').addEventListener('click',toggleMute);$('btnMute').textContent=muted?'Sound off':'Sound on';
 $('btnResume').addEventListener('click',()=>setPaused(false));
