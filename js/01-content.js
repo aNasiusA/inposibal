@@ -144,6 +144,7 @@
           name: "",
           music: true,
           voice: true,
+          ping: true,
         };
         let muted = false;
         try {
@@ -154,6 +155,7 @@
           if (typeof s.name === "string") settings.name = s.name.slice(0, 14);
           if (s.music === false) settings.music = false;
           if (s.voice === false) settings.voice = false;
+          if (s.ping === false) settings.ping = false;
           if (Array.isArray(s.loadout)) {
             const l = [...new Set(s.loadout.filter((id) => PW[id]))].slice(
               0,
@@ -172,6 +174,7 @@
                 name: settings.name,
                 music: settings.music,
                 voice: settings.voice,
+                ping: settings.ping,
                 muted,
                 loadout: settings.loadout,
               }),

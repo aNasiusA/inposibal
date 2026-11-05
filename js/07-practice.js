@@ -134,8 +134,7 @@
             again: !!again,
           };
           frameEl.classList.add("playing", "drill");
-          for (const m of ["menu", "end", "pause"])
-            $(m).classList.add("hidden");
+          hideMenus();
           buildPowerBar();
           def.setup();
           def.start(drill);

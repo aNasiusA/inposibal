@@ -4,41 +4,54 @@
           muted = !muted;
           if (master) master.gain.value = muted ? 0 : 0.5;
           if (muted) cmStop();
-          $("btnMute").textContent = muted ? "Sound off" : "Sound on";
+          $("btnMute").setAttribute("aria-pressed", String(!muted));
           saveSettings();
         }
+        const DIFF_NAME = { chill: "Chill", pro: "Pro", legend: "Legend" };
         function syncSeg() {
           document
             .querySelectorAll("#segDiff button")
             .forEach((b) =>
-              b.setAttribute(
-                "aria-pressed",
-                String(b.dataset.v === settings.diff),
-              ),
+              b.setAttribute("aria-pressed", String(b.dataset.v === settings.diff)),
             );
           document
             .querySelectorAll("#segLen button")
             .forEach((b) =>
-              b.setAttribute(
-                "aria-pressed",
-                String(+b.dataset.v === settings.len),
-              ),
+              b.setAttribute("aria-pressed", String(+b.dataset.v === settings.len)),
             );
+          $("homeSub").textContent =
+            "vs CPU \u00b7 " + DIFF_NAME[settings.diff] + " \u00b7 " + settings.len / 60 + " min";
         }
-        $("segDiff").addEventListener("click", (e) => {
-          const b = e.target.closest("button");
-          if (!b) return;
-          settings.diff = b.dataset.v;
-          syncSeg();
-          saveSettings();
-        });
-        $("segLen").addEventListener("click", (e) => {
-          const b = e.target.closest("button");
-          if (!b) return;
-          settings.len = +b.dataset.v;
-          syncSeg();
-          saveSettings();
-        });
+        for (const id of ["segDiff", "segLen"])
+          $(id).addEventListener("click", (e) => {
+            const b = e.target.closest("button");
+            if (!b) return;
+            if (id === "segDiff") settings.diff = b.dataset.v;
+            else settings.len = +b.dataset.v;
+            syncSeg();
+            saveSettings();
+          });
+        /* navigation: powers and settings remember where they were opened from */
+        let powersFrom = "menu",
+          settingsFrom = "menu";
+        const openPowers = (from) => {
+          powersFrom = from;
+          showScreen("pickScreen");
+        };
+        const openSettings = (from) => {
+          settingsFrom = from;
+          showScreen("settings");
+        };
+        $("btnKick").addEventListener("click", () => showScreen("setup"));
+        $("btnPracticeHome").addEventListener("click", () => practiceFor(shownId));
+        $("homePowers").addEventListener("click", () => openPowers("menu"));
+        $("setupPowers").addEventListener("click", () => openPowers("setup"));
+        $("homeSet").addEventListener("click", () => openSettings("menu"));
+        $("homeName").addEventListener("click", () => openSettings("menu"));
+        $("btnPauseSet").addEventListener("click", () => openSettings("pause"));
+        $("setupBack").addEventListener("click", () => showScreen("menu"));
+        $("powersBack").addEventListener("click", () => showScreen(powersFrom));
+        $("settingsBack").addEventListener("click", () => showScreen(settingsFrom));
         $("btnStart").addEventListener("click", () => {
           if (settings.loadout.length !== 3) return;
           initAudio();
@@ -48,10 +61,9 @@
           const b = e.target.closest("[data-practice]");
           if (b) startDrill(b.dataset.practice);
         });
-        $("btnPractice").addEventListener("click", () => practiceFor(shownId));
         $("btnPause").addEventListener("click", () => setPaused(!paused));
         $("btnMute").addEventListener("click", toggleMute);
-        $("btnMute").textContent = muted ? "Sound off" : "Sound on";
+        $("btnMute").setAttribute("aria-pressed", String(!muted));
         $("btnResume").addEventListener("click", () => setPaused(false));
         $("btnQuit").addEventListener("click", toMenu);
         $("btnAgain").addEventListener("click", () => {
@@ -61,9 +73,16 @@
         });
         $("btnMenu").addEventListener("click", toMenu);
         const nameIn = $("nameIn");
+        const syncName = () => {
+          const n = settings.name.trim() || "Player";
+          $("homeNm").textContent = n;
+          $("homeInit").textContent = n[0].toUpperCase();
+        };
         nameIn.value = settings.name;
+        syncName();
         nameIn.addEventListener("input", () => {
           settings.name = nameIn.value.slice(0, 14);
+          syncName();
           saveSettings();
         });
         nameIn.addEventListener("keydown", (e) => {
@@ -320,7 +339,7 @@
           } catch (e) {}
         });
         document.addEventListener("click", (e) => {
-          const b = e.target.closest(".segAud button");
+          const b = e.target.closest("button.segAud");
           if (!b) return;
           settings[b.dataset.v] = !settings[b.dataset.v];
           saveSettings();

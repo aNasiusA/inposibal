@@ -335,7 +335,12 @@ function roomMsg(m) {
       const r = performance.now() - m.ts;
       net.rtt = net.rtt ? net.rtt * 0.7 + r * 0.3 : r;
       const pe = $("pingEl");
-      if (pe) pe.textContent = Math.round(net.rtt) + " ms" + (p2pUp() ? " direct" : " relay");
+      if (pe) {
+        pe.textContent = settings.ping
+          ? Math.round(net.rtt) + " ms \u00b7 " + (p2pUp() ? "Direct" : "Relay")
+          : "";
+        pe.dataset.q = net.rtt < 80 ? "g" : net.rtt < 150 ? "a" : "r";
+      }
       return;
     }
     case "left":

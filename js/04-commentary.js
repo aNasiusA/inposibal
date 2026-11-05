@@ -301,7 +301,7 @@
           busGain(musicBus, settings.music ? MUS_LVL : 0, 0.1);
           if (!settings.voice) cmStop();
           document
-            .querySelectorAll(".segAud button")
+            .querySelectorAll("button.segAud")
             .forEach((b) =>
               b.setAttribute("aria-pressed", String(!!settings[b.dataset.v])),
             );
@@ -483,9 +483,7 @@
           hideBig();
           bannerEl.classList.remove("show");
           frameEl.classList.add("playing");
-          $("menu").classList.add("hidden");
-          $("end").classList.add("hidden");
-          $("pause").classList.add("hidden");
+          hideMenus();
           buildPowerBar();
           buildCpuLoad();
           setupKickoff(0);
@@ -516,9 +514,7 @@
           musicStop();
           crowdStop();
           cmStop();
-          $("end").classList.add("hidden");
-          $("pause").classList.add("hidden");
-          $("menu").classList.remove("hidden");
+          showScreen("menu");
           startDemo();
         }
         const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -772,7 +768,7 @@
           lastCmt = matchComment(a, b, nm);
           if (net.forfeit) lastCmt = net.oppName + " left the match. You win by walkover.";
           $("endCmt").textContent = lastCmt;
-          $("btnMenu").textContent = net.on ? "Go home" : "Change settings";
+          $("btnMenu").textContent = "Home";
           lastMatch = {
             name: nm,
             a: a.score,
