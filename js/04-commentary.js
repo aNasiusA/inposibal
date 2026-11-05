@@ -473,6 +473,9 @@
           jujuReset();
           demo = false;
           document.querySelector("#hud .tm .n").textContent = playerName();
+          document.querySelectorAll("#hud .tm .n")[1].textContent = net.on
+            ? net.oppName
+            : "CPU";
           paused = false;
           sudden = false;
           matchT = settings.len;
@@ -487,7 +490,8 @@
           buildCpuLoad();
           setupKickoff(0);
           showBanner(
-            "CPU picked " +
+            (net.on ? net.oppName : "CPU") +
+              " picked " +
               teams[1].loadout.map((id) => PW[id].name).join(", "),
             "#ff6b92",
             2600,
@@ -508,6 +512,7 @@
           setupKickoff(Math.random() < 0.5 ? 0 : 1);
         }
         function toMenu() {
+          if (net.on || net.ws) netLeave();
           musicStop();
           crowdStop();
           cmStop();
@@ -729,7 +734,9 @@
             a.score > b.score
               ? "You win!"
               : a.score < b.score
-                ? "CPU wins"
+                ? net.on
+                  ? net.oppName + " wins"
+                  : "CPU wins"
                 : "Draw";
           $("endTitle").style.color =
             a.score > b.score
@@ -737,6 +744,10 @@
               : a.score < b.score
                 ? "#ff6b92"
                 : "#fff";
+          if (net.forfeit) {
+            $("endTitle").textContent = "Opponent left";
+            $("endTitle").style.color = "#ffc61a";
+          }
           $("endScore").textContent = a.score + " - " + b.score;
           const tot = a.stats.poss + b.stats.poss || 1,
             pa = Math.round((a.stats.poss / tot) * 100);

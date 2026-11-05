@@ -12,7 +12,7 @@
         function pickTarget(t) {
           const o = ball.owner;
           if (o && o.team === t.id && !o.gk) return o;
-          if (t.id === 0 && !demo && t.ctrl) return t.ctrl;
+          if (t.human && t.ctrl) return t.ctrl;
           let best = null,
             bd = 1e9;
           for (const p of t.players) {
@@ -150,7 +150,7 @@
           say(t.id === 0 ? "sankofa_you" : "sankofa_cpu", 3, 150);
           roar(t.id === 0 ? "goal" : "groan");
           showBanner(
-            (t.id === 0 ? "You: " : "CPU: ") + "SANKOFA! Goal reversed",
+            teamLabel(t) + "SANKOFA! Goal reversed",
             PW.sankofa.color,
             2200,
           );
@@ -206,7 +206,7 @@
           SFX[id]();
           ring(p.x, p.y, p.r + 46, p.r + 6, def.wind, def.color);
           showBanner(
-            (t.id === 0 ? "You: " : "CPU: ") +
+            teamLabel(t) +
               def.name +
               (id === "trotro" ? "! Circle! Circle!" : "!"),
             def.color,
@@ -270,7 +270,7 @@
               ring(p.x, p.y, 10, 110, 0.5, def.color);
               break;
             case "magnet": {
-              const q = t.id === 0 && !demo && t.ctrl ? t.ctrl : p;
+              const q = t.human && t.ctrl ? t.ctrl : p;
               q.magnet = 2.5;
               ring(q.x, q.y, 10, 130, 0.5, def.color);
               break;

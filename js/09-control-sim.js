@@ -1,6 +1,7 @@
 "use strict";
         /* ---------- human control ---------- */
         function humanControl(p, dt) {
+          const input = inputOf(p.team);
           let mx = input.mx,
             my = input.my;
           const m = hyp(mx, my);
@@ -36,8 +37,8 @@
               const c = Math.max(0.55, p.charge);
               let dx = p.fx,
                 dy = p.fy;
-              const gx = oppGoalX(0);
-              if (dx > 0.2) {
+              const gx = oppGoalX(p.team);
+              if (dx * attackDir(p.team) > 0.2) {
                 const tt = (gx - p.x) / dx,
                   yh = p.y + dy * tt;
                 if (yh > GY0 - 80 && yh < GY1 + 80) {
@@ -90,8 +91,7 @@
           t.ctrl = best;
           t.swT = 0.15;
         }
-        function switchPlayer() {
-          const t = teams[0];
+        function switchPlayer(t = teams[0]) {
           if (demo || state !== "play" || paused) return;
           if (ball.owner && ball.owner === t.ctrl) return;
           let best = null,
@@ -222,20 +222,21 @@
             return;
           }
           p.dx = p.dy = 0;
-          const human = !demo && p === teams[0].ctrl,
-            T = teams[p.team],
+          const T = teams[p.team],
+            human = !demo && T.human && p === T.ctrl,
             dir = attackDir(p.team);
           if (active) {
             if (human) humanControl(p, dt);
             else aiControl(p, dt);
           }
-          const D = p.team === 1 ? DIFF[settings.diff] : DIFF.pro;
+          const D = diffOf(p.team),
+            cpuTeam = p.team === 1 && !T.human;
           let mul = (p.giant > 0 ? 0.85 : 1) * (ball.owner === p ? 0.93 : 1);
           if (ball.owner === p && p.charge > 0 && T.rocket > 0) mul *= 0.6;
           if (T.sankofa > 0 && !p.gk && ball.owner !== p && p.dx * dir < -0.2)
             mul *= human ? 1.3 : 1.4;
           const sp =
-              p.speed * (p.team === 1 ? D.speed : human ? 1 : 0.96) * mul,
+              p.speed * (cpuTeam ? D.speed : human ? 1 : 0.96) * mul,
             k = Math.min(1, dt * (p.giant > 0 ? 7 : 11));
           // Azonto: a change of direction of 60 degrees or more is a cut; tackles landing in its 0.15s window miss
           let cut = false;
@@ -346,8 +347,8 @@
             if (o.dash > 0) continue;
             const inLane = false;
             if (o.protect > 0 && !inLane) continue;
-            const cpu = q.team === 1,
-              Dq = DIFF[settings.diff];
+            const cpu = q.team === 1 && !teams[1].human,
+              Dq = diffOf(1);
             let chance = cpu ? Dq.tackle : 0.45;
             if (q.slide > 0) chance = cpu ? Dq.slideHit : 1;
             if (q.gk) chance = 0.15;
@@ -640,6 +641,7 @@
             jujuUpdate(g);
           }
           if (!sudden && !demo && !juju.active && !drill) {
+            if (net.on) juju.rolled = true;
             matchT -= g;
             if (matchT <= 10 && !CM.l10 && !sudden) {
               CM.l10 = true;
@@ -684,10 +686,10 @@
               t.recvPt = null;
             }
           }
-          if (!demo) assignControl(teams[0], g);
+          for (const t of teams) if (t.human) assignControl(t, g);
           pickChasers();
           if (!drill)
-            for (const t of teams) if (demo || t.id === 1) aiPowers(t, g);
+            for (const t of teams) if (demo || (t.id === 1 && !t.human)) aiPowers(t, g);
           for (const p of ALL) updatePlayer(p, g, true);
           separatePlayers();
           resolveTackles();
@@ -701,7 +703,32 @@
           }
         }
 
+        function stepFx(g, dt) {
+          for (let i = parts.length - 1; i >= 0; i--) {
+            const q = parts[i];
+            q.life += g;
+            if (q.life >= q.max) {
+              parts.splice(i, 1);
+              continue;
+            }
+            q.vy += q.g * g;
+            const k = Math.exp(-q.drag * g);
+            q.vx *= k;
+            q.vy *= k;
+            q.x += q.vx * g;
+            q.y += q.vy * g;
+            q.rot += g * 8;
+          }
+          for (let i = rings.length - 1; i >= 0; i--) {
+            rings[i].life += dt;
+            if (rings[i].life >= rings[i].max) rings.splice(i, 1);
+          }
+        }
         function update(dt) {
+          if (net.guest) {
+            netGuestStep(dt);
+            return;
+          }
           time += dt;
           timeScale += (timeScaleTarget - timeScale) * Math.min(1, dt * 6);
           if (Math.abs(timeScale - timeScaleTarget) < 0.01)
@@ -743,13 +770,14 @@
             if (stateT < 2.2) timeScaleTarget = 1;
             if (
               !demo &&
+              !net.on &&
               lastScorer === 0 &&
               !goalUndone &&
               stateT < 2.6 &&
               stateT > 2.2
             ) {
               const c = teams[1],
-                D = DIFF[settings.diff];
+                D = diffOf(1);
               if (
                 c.loadout.includes("sankofa") &&
                 c.pw.sankofa <= 0 &&
@@ -767,27 +795,12 @@
             }
           }
           if (!demo && (state === "play" || state === "goal")) histPush();
-          for (let i = parts.length - 1; i >= 0; i--) {
-            const q = parts[i];
-            q.life += g;
-            if (q.life >= q.max) {
-              parts.splice(i, 1);
-              continue;
-            }
-            q.vy += q.g * g;
-            const k = Math.exp(-q.drag * g);
-            q.vx *= k;
-            q.vy *= k;
-            q.x += q.vx * g;
-            q.y += q.vy * g;
-            q.rot += g * 8;
-          }
-          for (let i = rings.length - 1; i >= 0; i--) {
-            rings[i].life += dt;
-            if (rings[i].life >= rings[i].max) rings.splice(i, 1);
-          }
+          stepFx(g, dt);
           input.shootUp = false;
           input.slide = false;
           input.passT = Math.max(0, input.passT - dt);
+          rin.shootUp = false;
+          rin.slide = false;
+          rin.passT = Math.max(0, rin.passT - dt);
         }
 

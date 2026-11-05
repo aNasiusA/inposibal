@@ -116,6 +116,9 @@
               <button class="btn alt" id="btnPractice" type="button">
                 Practice
               </button>
+              <button class="btn alt" id="btnOnline" type="button">
+                Play online
+              </button>
               <dl class="keys">
                 <dt>Move</dt>
                 <dd>WASD or arrow keys</dd>
@@ -177,6 +180,39 @@
             </div>
           </div>
         </div>
+        <div class="overlay hidden" id="online">
+          <div class="card">
+            <div class="final" id="olTitle">Play online</div>
+            <p class="cmt" id="olMsg"></p>
+            <div class="olcode" id="olCode"></div>
+            <div id="olMain">
+              <div class="row">
+                <button class="btn" id="olCreate" type="button">
+                  Create room
+                </button>
+                <button class="btn" id="olQuick" type="button">
+                  Quick match
+                </button>
+              </div>
+              <div class="row">
+                <input
+                  id="olJoinIn"
+                  class="nameIn olIn"
+                  maxlength="5"
+                  placeholder="Room code"
+                  autocomplete="off"
+                  autocapitalize="characters"
+                  spellcheck="false"
+                />
+                <button class="btn" id="olJoin" type="button">Join</button>
+              </div>
+            </div>
+            <div class="row">
+              <button class="btn" id="olCopy" type="button">Copy link</button>
+              <button class="btn alt" id="olBack" type="button">Back</button>
+            </div>
+          </div>
+        </div>
         <div class="overlay hidden" id="end">
           <div class="card">
             <div class="final" id="endTitle">Full time</div>
@@ -220,5 +256,6 @@
     <script src="js/12-input.js"></script>
     <script src="js/13-menu-share.js"></script>
     <script src="js/14-main.js"></script>
+    <script src="js/15-net.js"></script>
   </body>
 </html>

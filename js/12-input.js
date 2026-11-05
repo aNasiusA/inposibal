@@ -34,7 +34,7 @@
           Numpad3: 2,
         };
         function setPaused(v) {
-          if (demo || state === "ended") return;
+          if (demo || state === "ended" || net.on) return;
           paused = v;
           $("pause").classList.toggle("hidden", !v);
           if (v) {
@@ -68,7 +68,7 @@
           if (demo || paused) return;
           if (e.code in SLOT) {
             const id = teams[0].loadout[SLOT[e.code]];
-            if (id) usePower(teams[0], id);
+            if (id) localPower(id);
             return;
           }
           if (e.code === "Space" || e.code === "KeyJ") {
@@ -89,7 +89,7 @@
             return;
           }
           if (e.code === "KeyQ" || e.code === "KeyE") {
-            switchPlayer();
+            localSwitch();
             return;
           }
           keys.add(e.code);
@@ -215,7 +215,7 @@
           act.addEventListener("pointerup", pEnd);
           act.addEventListener("pointercancel", pEnd);
           $("tSwitch").addEventListener("pointerdown", (e) => {
-            switchPlayer();
+            localSwitch();
             e.preventDefault();
           });
         })();

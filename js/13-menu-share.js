@@ -55,6 +55,7 @@
         $("btnResume").addEventListener("click", () => setPaused(false));
         $("btnQuit").addEventListener("click", toMenu);
         $("btnAgain").addEventListener("click", () => {
+          if (net.on) return netRematch();
           initAudio();
           startMatch();
         });

@@ -3,3 +3,5 @@ promo-video/
 .env
 tools/samples/
 .DS_Store
+node_modules/
+server/.wrangler/

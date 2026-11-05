@@ -163,11 +163,12 @@
         }
         function passTarget(p) {
           const t = teams[p.team],
-            human = !demo && p === teams[0].ctrl;
+            human = !demo && teams[p.team].human && p === teams[p.team].ctrl;
           let dx = p.fx,
             dy = p.fy;
-          if (human && hyp(input.mx, input.my) > 0.25) {
-            const n = norm(input.mx, input.my);
+          const inp = inputOf(p.team);
+          if (human && hyp(inp.mx, inp.my) > 0.25) {
+            const n = norm(inp.mx, inp.my);
             dx = n[0];
             dy = n[1];
           }

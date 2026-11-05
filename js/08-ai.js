@@ -11,7 +11,7 @@
         }
         function interceptPoint(p) {
           const k = 1.15,
-            sp = p.speed * (p.team === 1 ? DIFF[settings.diff].speed : 0.96);
+            sp = p.speed * (p.team === 1 && !teams[1].human ? DIFF[settings.diff].speed : 0.96);
           let px = ball.x,
             py = ball.y;
           for (let s = 0; s <= 1.6; s += 0.08) {
@@ -144,7 +144,7 @@
         }
         function aiControl(p, dt) {
           const t = teams[p.team],
-            D = p.team === 1 ? DIFF[settings.diff] : DIFF.pro;
+            D = diffOf(p.team);
           if (p.gk) {
             aiKeeper(p, dt, D);
             return;
@@ -291,7 +291,7 @@
         function aiPowers(t, dt) {
           t.aiTimer -= dt;
           if (t.aiTimer > 0 || t.wind || t.lock > 0) return;
-          const D = t.id === 1 ? DIFF[settings.diff] : DIFF.pro;
+          const D = diffOf(t.id);
           t.aiTimer = D.powerTick * rand(0.7, 1.3);
           const before = t.stats.powers;
           const o = ball.owner,

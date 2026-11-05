@@ -1031,3 +1031,24 @@ h2 {
     transition: none;
   }
 }
+
+/* online lobby */
+.olcode {
+  font-family: "Bowlby One", sans-serif;
+  font-size: max(28px, calc(var(--u) * 64px));
+  letter-spacing: 0.16em;
+  color: #ffc61a;
+  text-align: center;
+  min-height: 1em;
+}
+.olIn {
+  text-transform: uppercase;
+  text-align: center;
+  letter-spacing: 0.2em;
+  max-width: 9em;
+}
+#online .row {
+  margin-top: 10px;
+  justify-content: center;
+  align-items: center;
+}

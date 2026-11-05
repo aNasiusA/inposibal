@@ -24,7 +24,7 @@
             b.addEventListener("pointerdown", (e) => {
               e.preventDefault();
               initAudio();
-              usePower(teams[0], id);
+              localPower(id);
             });
             pl.appendChild(b);
             pbtn[id] = {
@@ -43,7 +43,7 @@
         function buildCpuLoad() {
           const el = $("cpuLoad");
           el.innerHTML =
-            "<span>CPU</span>" +
+            "<span>" + (net.on ? net.oppName : "CPU") + "</span>" +
             teams[1].loadout
               .map(
                 (id) =>
