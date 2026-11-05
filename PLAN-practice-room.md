@@ -27,7 +27,7 @@ Goal: every power can be tried in a short, scripted situation where it is obviou
 Sankofa's second use (reversing a goal) is the most valuable and the least discoverable, so it gets its own part rather than a footnote.
 
 ## What the code already gives us
-`index.html` is one file (~1200 lines), all game logic inside one IIFE. Relevant pieces:
+The game is split into `index.html` (markup), `css/style.css` and ordered scripts in `js/` (the practice room lives in `js/07-practice.js`), all sharing one global scope. Relevant pieces:
 - `POWERS`, `powerCost`, `usePower`, `landPower` (~line 287, 603-660): power definitions and activation.
 - `setupKickoff(kt)` (~line 372): sets players and ball for a scene. A drill scene is a variant of this.
 - `startMatch` / `startDemo` / `toMenu` (~line 484): how modes start and stop. `demo=false` plus a drill flag gives a real-input scene.
