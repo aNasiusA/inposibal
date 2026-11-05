@@ -1054,7 +1054,14 @@ h2 {
 }
 .ping {
   align-self: center;
+  border-radius: calc(var(--u) * 12px);
+  padding: 0.5em 0.9em;
+  background: rgba(24, 16, 52, 0.86);
+  color: #f4f1ff;
   font-weight: 800;
-  font-size: max(10px, calc(var(--u) * 13px));
-  color: rgba(244, 241, 255, 0.75);
+  font-size: max(11px, calc(var(--u) * 15px));
+  white-space: nowrap;
+}
+.ping:empty {
+  display: none;
 }
