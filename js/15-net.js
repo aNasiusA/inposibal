@@ -27,8 +27,12 @@ const rematch = { me: false, opp: false };
 let snapTimer = 0,
   inTimer = 0,
   pingTimer = 0;
+const pendEv = []; // events that arrived on the reliable channel before their snapshot
 const pred = { who: null, x: 0, y: 0 }; // guest-side prediction for the player you control
 net.rtt = 0;
+net.snapN = 0;
+net.lastN = -1;
+net.appliedN = -1;
 
 /* ----- connection ----- */
 function netSend(o) {
@@ -75,6 +79,7 @@ function netLeave() {
   clearInterval(snapTimer);
   clearInterval(inTimer);
   clearInterval(pingTimer);
+  p2pStop();
   $("pingEl").textContent = "";
   net.rtt = 0;
   net.on = net.host = net.guest = false;
@@ -101,6 +106,95 @@ function netPeerLeft() {
   clearInterval(snapTimer);
   clearInterval(inTimer);
   endMatch();
+}
+
+/* ----- direct connection (WebRTC) -----
+   Once both players are in the match they open a direct data channel, signalled through
+   the relay. Inputs, snapshots, pings and (unordered) go on the "fast" channel; one-off
+   messages (powers, switch, rematch, events) go on the reliable "rel" channel. If a direct
+   path can't be made or drops, everything quietly keeps flowing through the relay. */
+const ICE = {
+  iceServers: [
+    { urls: "stun:stun.cloudflare.com:3478" },
+    { urls: "stun:stun.l.google.com:19302" },
+  ],
+};
+let pendingIce = [];
+const p2pUp = () =>
+  !!net.dcFast && !!net.dcRel && net.dcFast.readyState === "open" && net.dcRel.readyState === "open";
+function viaChannel(dc, o) {
+  if (p2pUp()) {
+    try {
+      dc().send(JSON.stringify(o));
+      return;
+    } catch (e) {}
+  }
+  netSend(o);
+}
+const sendFast = (o) => viaChannel(() => net.dcFast, o);
+const sendRel = (o) => viaChannel(() => net.dcRel, o);
+function p2pStop() {
+  try {
+    if (net.pc) net.pc.close();
+  } catch (e) {}
+  net.pc = net.dcFast = net.dcRel = null;
+  pendingIce = [];
+}
+function p2pStart(offerer) {
+  if (typeof RTCPeerConnection === "undefined") return;
+  if (net.pc && !["failed", "closed", "disconnected"].includes(net.pc.connectionState)) return;
+  p2pStop();
+  const pc = new RTCPeerConnection(ICE);
+  net.pc = pc;
+  pc.onicecandidate = (e) => {
+    if (e.candidate) netSend({ t: "sig", ice: e.candidate });
+  };
+  const wire = (dc) => {
+    dc.onmessage = (e) => {
+      let m;
+      try {
+        m = JSON.parse(e.data);
+      } catch (_) {
+        return;
+      }
+      if (net.pc === pc) roomMsg(m);
+    };
+  };
+  if (offerer) {
+    net.dcFast = pc.createDataChannel("fast", { ordered: false, maxRetransmits: 0 });
+    net.dcRel = pc.createDataChannel("rel");
+    wire(net.dcFast);
+    wire(net.dcRel);
+    pc.createOffer()
+      .then((o) => pc.setLocalDescription(o))
+      .then(() => netSend({ t: "sig", sdp: pc.localDescription }))
+      .catch((e) => console.warn("p2p offer", e));
+  } else {
+    pc.ondatachannel = (e) => {
+      if (e.channel.label === "fast") net.dcFast = e.channel;
+      else net.dcRel = e.channel;
+      wire(e.channel);
+    };
+  }
+}
+async function onSig(m) {
+  const pc = net.pc;
+  if (!pc) return;
+  try {
+    if (m.sdp) {
+      await pc.setRemoteDescription(m.sdp);
+      for (const c of pendingIce.splice(0)) await pc.addIceCandidate(c);
+      if (m.sdp.type === "offer") {
+        await pc.setLocalDescription(await pc.createAnswer());
+        netSend({ t: "sig", sdp: pc.localDescription });
+      }
+    } else if (m.ice) {
+      if (pc.remoteDescription) await pc.addIceCandidate(m.ice);
+      else pendingIce.push(m.ice);
+    }
+  } catch (e) {
+    console.warn("p2p signal", e);
+  }
 }
 
 /* ----- lobby UI ----- */
@@ -228,12 +322,20 @@ function roomMsg(m) {
       rematch.opp = true;
       if (net.host && rematch.me) rematchGo();
       return;
+    case "sig":
+      return onSig(m);
+    case "ev":
+      if (!net.guest) return;
+      if (m.n <= net.appliedN) for (const e of m.ev) applyEvent(e);
+      else pendEv.push(m);
+      return;
     case "ping":
-      return netSend({ t: "pong", ts: m.ts });
+      return sendFast({ t: "pong", ts: m.ts });
     case "pong": {
       const r = performance.now() - m.ts;
       net.rtt = net.rtt ? net.rtt * 0.7 + r * 0.3 : r;
-      $("pingEl").textContent = Math.round(net.rtt) + " ms";
+      const pe = $("pingEl");
+      if (pe) pe.textContent = Math.round(net.rtt) + " ms" + (p2pUp() ? " direct" : " relay");
       return;
     }
     case "left":
@@ -265,7 +367,12 @@ function startOnline(role) {
   clearInterval(pingTimer);
   net.rtt = 0;
   pred.who = null;
-  pingTimer = setInterval(() => netSend({ t: "ping", ts: performance.now() }), 1000);
+  net.snapN = 0;
+  net.lastN = -1;
+  net.appliedN = -1;
+  pendEv.length = 0;
+  p2pStart(net.host);
+  pingTimer = setInterval(() => sendFast({ t: "ping", ts: performance.now() }), 1000);
   if (net.host) snapTimer = setInterval(sendSnap, SNAP_MS);
   else inTimer = setInterval(sendInput, IN_MS);
 }
@@ -273,7 +380,7 @@ function netRematch() {
   if (net.forfeit) return;
   rematch.me = true;
   $("btnAgain").textContent = "Waiting for " + net.oppName + "...";
-  netSend({ t: "rematch" });
+  sendRel({ t: "rematch" });
   if (net.host && rematch.opp) rematchGo();
 }
 function rematchGo() {
@@ -283,11 +390,11 @@ function rematchGo() {
 
 /* ----- guest: input and power relays ----- */
 function localPower(id) {
-  if (net.guest) netSend({ t: "pw", id });
+  if (net.guest) sendRel({ t: "pw", id });
   else usePower(teams[0], id);
 }
 function localSwitch() {
-  if (net.guest) netSend({ t: "sw" });
+  if (net.guest) sendRel({ t: "sw" });
   else switchPlayer();
 }
 function sendInput() {
@@ -305,7 +412,7 @@ function sendInput() {
   input.shootUp = false;
   input.slide = false;
   input.passT = 0;
-  netSend(m);
+  sendFast(m);
 }
 
 /* ----- host: events and snapshots ----- */
@@ -372,8 +479,12 @@ function sendSnap() {
       : null,
     st: t.stats,
   });
-  netSend({
+  const ev = EV.splice(0),
+    n = ++net.snapN,
+    direct = p2pUp();
+  const snap = {
     t: "snap",
+    n,
     p: ALL.map((p) => PF.map((k) => r2(p[k]))),
     b: [r2(ball.x), r2(ball.y), r2(ball.vx), r2(ball.vy), r2(ball.rot), r2(ball.fire)],
     bo: ball.owner ? [ball.owner.team, ball.owner.idx] : null,
@@ -392,12 +503,21 @@ function sendSnap() {
       kt: kickTeam,
       sc: r2(simClock),
     },
-    ev: EV.splice(0),
-  });
+  };
+  if (direct) {
+    // snapshots may be dropped on the fast channel, so events travel reliably with the same number
+    sendFast(snap);
+    if (ev.length) sendRel({ t: "ev", n, ev });
+  } else {
+    snap.ev = ev;
+    netSend(snap);
+  }
 }
 
 /* ----- guest: decode (mirror), buffer, interpolate ----- */
 function onSnap(s) {
+  if (s.n <= net.lastN) return; // late or duplicate (the fast channel is unordered)
+  net.lastN = s.n;
   const P = new Array(8);
   for (let k = 0; k < 8; k++) {
     const h = k >> 2,
@@ -447,7 +567,10 @@ function applyDiscrete(s) {
   ball.owner = s.bo ? teams[1 - s.bo[0]].players[s.bo[1]] : null;
   ball.shot = !!s.bs;
   ball.lastTeam = 1 - s.bl;
-  for (const e of s.ev) applyEvent(e);
+  net.appliedN = Math.max(net.appliedN, s.n);
+  pendEv.sort((a, b) => a.n - b.n);
+  while (pendEv.length && pendEv[0].n <= s.n) for (const e of pendEv.shift().ev) applyEvent(e);
+  for (const e of s.ev || []) applyEvent(e);
 }
 const swapSide = (k) =>
   k.endsWith("_you") ? k.slice(0, -4) + "_cpu" : k.endsWith("_cpu") ? k.slice(0, -4) + "_you" : k;
