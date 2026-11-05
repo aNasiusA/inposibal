@@ -121,9 +121,13 @@ function olOpen() {
   );
 }
 function olBack() {
-  netLeave();
   $("online").classList.add("hidden");
   $("menu").classList.remove("hidden");
+  try {
+    netLeave();
+  } catch (e) {
+    console.error(e);
+  }
 }
 const roomLink = () =>
   location.origin + location.pathname + "?room=" + (net.code || "");
