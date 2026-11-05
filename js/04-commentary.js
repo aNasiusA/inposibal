@@ -770,7 +770,9 @@
             row(a.stats.powers, "Powers used", b.stats.powers);
           const nm = playerName();
           lastCmt = matchComment(a, b, nm);
+          if (net.forfeit) lastCmt = net.oppName + " left the match. You win by walkover.";
           $("endCmt").textContent = lastCmt;
+          $("btnMenu").textContent = net.on ? "Go home" : "Change settings";
           lastMatch = {
             name: nm,
             a: a.score,
