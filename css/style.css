@@ -1052,3 +1052,9 @@ h2 {
   justify-content: center;
   align-items: center;
 }
+.ping {
+  align-self: center;
+  font-weight: 800;
+  font-size: max(10px, calc(var(--u) * 13px));
+  color: rgba(244, 241, 255, 0.75);
+}

@@ -9,9 +9,9 @@ const RELAY_PROD = "wss://relay.anasiusa.dev";
 const RELAY = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
   ? "ws://localhost:8787"
   : RELAY_PROD;
-const SNAP_MS = 50,
-  IN_MS = 33,
-  INTERP_MS = 110,
+const SNAP_MS = 33,
+  IN_MS = 16,
+  INTERP_MS = 80,
   MX = PX0 + PX1; // mirror axis: x' = MX - x
 // player fields that travel in a snapshot; the *_NEG ones flip sign when mirrored
 const PF = [
@@ -25,7 +25,10 @@ const EV = [];
 const snapBuf = [];
 const rematch = { me: false, opp: false };
 let snapTimer = 0,
-  inTimer = 0;
+  inTimer = 0,
+  pingTimer = 0;
+const pred = { who: null, x: 0, y: 0 }; // guest-side prediction for the player you control
+net.rtt = 0;
 
 /* ----- connection ----- */
 function netSend(o) {
@@ -71,6 +74,9 @@ function netLeave() {
   netClose();
   clearInterval(snapTimer);
   clearInterval(inTimer);
+  clearInterval(pingTimer);
+  $("pingEl").textContent = "";
+  net.rtt = 0;
   net.on = net.host = net.guest = false;
   net.role = null;
   net.forfeit = false;
@@ -222,6 +228,14 @@ function roomMsg(m) {
       rematch.opp = true;
       if (net.host && rematch.me) rematchGo();
       return;
+    case "ping":
+      return netSend({ t: "pong", ts: m.ts });
+    case "pong": {
+      const r = performance.now() - m.ts;
+      net.rtt = net.rtt ? net.rtt * 0.7 + r * 0.3 : r;
+      $("pingEl").textContent = Math.round(net.rtt) + " ms";
+      return;
+    }
     case "left":
       return netPeerLeft();
   }
@@ -248,6 +262,10 @@ function startOnline(role) {
   startMatch();
   clearInterval(snapTimer);
   clearInterval(inTimer);
+  clearInterval(pingTimer);
+  net.rtt = 0;
+  pred.who = null;
+  pingTimer = setInterval(() => netSend({ t: "ping", ts: performance.now() }), 1000);
   if (net.host) snapTimer = setInterval(sendSnap, SNAP_MS);
   else inTimer = setInterval(sendInput, IN_MS);
 }
@@ -508,8 +526,47 @@ function netGuestStep(dt) {
     ball.rot = a[4];
     ball.fire = a[5];
   }
+  predictOwn(dt);
   if (shake > 0) shake = Math.max(0, shake - dt * 45);
   stepFx(dt * timeScale, dt);
+}
+// The host only hears your keys after a trip over the network, so on your screen the
+// player you control would answer late. Show it where the host's latest snapshot says
+// it is, plus the movement your current keys will add over the time that snapshot is
+// already stale. Smoothed so corrections don't snap.
+function predictOwn(dt) {
+  const c = teams[0].ctrl,
+    last = snapBuf[snapBuf.length - 1];
+  if (!c || !last || state !== "play" || c.stun > 0 || c.dash > 0 || c.slide > 0 || c.recover > 0) {
+    pred.who = null;
+    return;
+  }
+  const a = last.P[ALL.indexOf(c)];
+  const age = Math.min(0.4, (performance.now() - last.at + net.rtt / 2) / 1000);
+  const m = Math.max(1, hyp(input.mx, input.my)),
+    sp = c.speed * (c.giant > 0 ? 0.85 : 1) * (ball.owner === c ? 0.93 : 1);
+  const tx = clamp(a[0] + (input.mx / m) * sp * age, PX0 + c.r, PX1 - c.r),
+    ty = clamp(a[1] + (input.my / m) * sp * age, PY0 + c.r, PY1 - c.r);
+  if (pred.who !== c || Math.hypot(tx - pred.x, ty - pred.y) > 160) {
+    pred.who = c;
+    pred.x = tx;
+    pred.y = ty;
+  } else {
+    const k = Math.min(1, dt * 16);
+    pred.x += (tx - pred.x) * k;
+    pred.y += (ty - pred.y) * k;
+  }
+  if (ball.owner === c) {
+    ball.x += pred.x - c.x;
+    ball.y += pred.y - c.y;
+  }
+  c.x = pred.x;
+  c.y = pred.y;
+  if (hyp(input.mx, input.my) > 0.2) {
+    const n = norm(input.mx, input.my);
+    c.fx = n[0];
+    c.fy = n[1];
+  }
 }
 
 /* ----- wiring ----- */
