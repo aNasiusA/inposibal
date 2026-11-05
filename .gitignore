@@ -2,3 +2,4 @@
 promo-video/
 .env
 tools/samples/
+.DS_Store
