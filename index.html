@@ -13,7 +13,7 @@
       href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Figtree:wght@500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/style.css?v=20261105e" />
+    <link rel="stylesheet" href="css/style.css?v=20261105l" />
   </head>
   <body>
     <main class="stage" id="stage">
@@ -32,10 +32,11 @@
           </div>
         </div>
         <div class="cpuload" id="cpuLoad"></div>
+        <span class="ping" id="pingEl"></span>
         <div class="tools">
-          <span class="ping" id="pingEl"></span>
-          <button id="btnPause" type="button">Pause</button
-          ><button id="btnMute" type="button">Sound on</button>
+          <button id="btnPause" type="button" aria-label="Pause">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+          </button>
         </div>
         <div class="banner" id="banner"></div>
         <div class="cmcap" id="cmCap"></div>
@@ -61,177 +62,138 @@
           <button class="tbtn tshoot" id="tShoot" type="button">Shoot</button>
         </div>
 
-        <div class="overlay" id="menu">
-          <div class="panel">
-            <div>
-              <h1>Inposibal</h1>
-              <p class="tag">
-                Four-a-side football with Ghanaian powers you have to earn. Win
-                the ball, beat your man and play forward to build Morale, then
-                spend it at the right moment.
-              </p>
-              <label class="field"
-                >Your name<input
-                  id="nameIn"
-                  class="nameIn"
-                  maxlength="14"
-                  placeholder="Player"
-                  autocomplete="off"
-                  autocapitalize="words"
-                  spellcheck="false"
-              /></label>
-              <div class="field">
-                Opponent
-                <div
-                  class="seg"
-                  id="segDiff"
-                  role="group"
-                  aria-label="Opponent strength"
-                >
-                  <button type="button" data-v="chill">Chill</button
-                  ><button type="button" data-v="pro">Pro</button
-                  ><button type="button" data-v="legend">Legend</button>
-                </div>
-              </div>
-              <div class="field">
-                Sound
-                <div class="seg segAud" role="group" aria-label="Sound options">
-                  <button type="button" data-v="music">Music</button
-                  ><button type="button" data-v="voice">Commentary</button>
-                </div>
-              </div>
-              <div class="field">
-                Match length
-                <div
-                  class="seg"
-                  id="segLen"
-                  role="group"
-                  aria-label="Match length"
-                >
-                  <button type="button" data-v="60">1 min</button
-                  ><button type="button" data-v="120">2 min</button
-                  ><button type="button" data-v="240">4 min</button>
-                </div>
-              </div>
-              <button class="go" id="btnStart" type="button">Kick off</button>
-              <button class="btn alt" id="btnPractice" type="button">
-                Practice
+        <!-- Home -->
+        <div class="overlay scr" id="menu">
+          <div class="topbar">
+            <button class="chip" id="homeName" type="button"><i id="homeInit">P</i><span id="homeNm">Player</span></button>
+            <div class="grp">
+              <button class="ibtn" id="btnMute" type="button" aria-label="Sound" aria-pressed="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path class="w" d="M16.5 8.5a5 5 0 0 1 0 7"/></svg>
               </button>
-              <button class="btn alt" id="btnOnline" type="button">
-                Play online
+              <button class="ibtn" id="homeSet" type="button" aria-label="Settings">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
               </button>
-              <dl class="keys">
-                <dt>Move</dt>
-                <dd>WASD or arrow keys</dd>
-                <dt>Shoot</dt>
-                <dd>Hold Space, release to fire</dd>
-                <dt>Pass</dt>
-                <dd>K or Shift, toward where you steer</dd>
-                <dt>Slide tackle</dt>
-                <dd>L or Z</dd>
-                <dt>Switch player</dt>
-                <dd>Q</dd>
-                <dt>Powers</dt>
-                <dd>Keys 1 to 3, or tap them. Each costs Morale</dd>
-                <dt>Morale</dt>
-                <dd>
-                  Earned from tackles, interceptions, beating a defender,
-                  forward passes and shots on target
-                </dd>
-              </dl>
             </div>
-            <div>
-              <div class="pickhead">
-                Pick 3 powers <span id="pickCount">3 of 3 picked</span>
-              </div>
-              <div class="plist" id="plist"></div>
-              <div class="pdesc" id="pdesc"></div>
+          </div>
+          <div class="home">
+            <div class="brand">
+              <h1>Inposibal</h1>
+              <p class="tag">Four-a-side football with Ghanaian powers you have to earn.</p>
+              <button class="strip" id="homePowers" type="button"><span class="lbl">Your powers</span><span class="mini" id="homePow"></span><span class="edit">Edit</span></button>
+            </div>
+            <div class="modes">
+              <button class="mode main" id="btnKick" type="button"><b>Kick off</b><span id="homeSub">Play the CPU</span></button>
+              <button class="mode" id="btnOnline" type="button"><span><b>Play online</b><small>Quick match or a room with a friend</small></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+              <button class="mode" id="btnPracticeHome" type="button"><span><b>Practice</b><small>Learn each power in a short drill</small></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
             </div>
           </div>
         </div>
 
+        <!-- Kick off setup -->
+        <div class="overlay scr hidden" id="setup">
+          <button class="back" id="setupBack" type="button" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2 class="st">Kick off</h2>
+          <div class="body">
+            <div class="two">
+              <div class="fld"><span class="lbl">Opponent</span>
+                <div class="seg" id="segDiff" role="group" aria-label="Opponent strength"><button type="button" data-v="chill">Chill</button><button type="button" data-v="pro">Pro</button><button type="button" data-v="legend">Legend</button></div></div>
+              <div class="fld"><span class="lbl">Match length</span>
+                <div class="seg" id="segLen" role="group" aria-label="Match length"><button type="button" data-v="60">1 min</button><button type="button" data-v="120">2 min</button><button type="button" data-v="240">4 min</button></div></div>
+            </div>
+            <button class="row2" id="setupPowers" type="button"><span><span class="lbl">Your powers</span><b id="setupPowNames"></b></span><span class="edit">Change</span></button>
+            <button class="go" id="btnStart" type="button">Kick off</button>
+          </div>
+        </div>
+
+        <!-- Powers -->
+        <div class="overlay scr hidden" id="pickScreen">
+          <button class="back" id="powersBack" type="button" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2 class="st">Pick 3 powers</h2><span class="cnt" id="pickCount">3 of 3 picked</span>
+          <div class="body split">
+            <div class="plist" id="plist"></div>
+            <div class="pdesc" id="pdesc"></div>
+          </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="overlay scr hidden" id="settings">
+          <button class="back" id="settingsBack" type="button" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2 class="st">Settings</h2>
+          <div class="body split2">
+            <div>
+              <div class="lbl">Player</div>
+              <div class="box"><div class="trow"><label for="nameIn"><b>Your name</b></label><input id="nameIn" class="nameIn" maxlength="14" placeholder="Player" autocomplete="off" autocapitalize="words" spellcheck="false" /></div></div>
+              <div class="lbl">Sound</div>
+              <div class="box"><div class="trow"><div><b>Music</b><small>Background beats</small></div><button class="tog segAud" type="button" data-v="music" aria-label="Music"></button></div><div class="trow"><div><b>Commentary</b><small>Voice lines during the match</small></div><button class="tog segAud" type="button" data-v="voice" aria-label="Commentary"></button></div></div>
+              <div class="lbl">Online</div>
+              <div class="box"><div class="trow"><div><b>Show ping</b><small>Latency and connection type in a match</small></div><button class="tog segAud" type="button" data-v="ping" aria-label="Show ping"></button></div></div>
+            </div>
+            <div>
+              <div class="lbl">Controls</div>
+              <dl class="box keys">
+                <dt>Move</dt><dd>WASD or arrows</dd>
+                <dt>Shoot</dt><dd>Hold Space, release</dd>
+                <dt>Pass</dt><dd>K or Shift</dd>
+                <dt>Slide tackle</dt><dd>L or Z</dd>
+                <dt>Switch player</dt><dd>Q</dd>
+                <dt>Powers</dt><dd>Keys 1 to 3, or tap</dd>
+              </dl>
+              <p class="note">Morale comes from tackles, interceptions, beating a defender, forward passes and shots on target.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pause -->
         <div class="overlay hidden" id="pause">
           <div class="card">
             <h2>Paused</h2>
-            <div class="seg segAud" role="group" aria-label="Sound options">
-              <button type="button" data-v="music">Music</button
-              ><button type="button" data-v="voice">Commentary</button>
-            </div>
+            <button class="go" id="btnResume" type="button">Resume</button>
             <div class="row">
-              <button class="btn" id="btnResume" type="button">Resume</button
-              ><button class="btn alt" id="btnQuit" type="button">
-                Quit to menu
-              </button>
+              <button class="btn" id="btnPauseSet" type="button">Settings</button>
+              <button class="btn" id="btnQuit" type="button">Quit to home</button>
             </div>
           </div>
         </div>
 
-        <div
-          class="overlay hidden sharepane"
-          id="sharePane"
-          style="display: none"
-        >
+        <div class="overlay hidden sharepane" id="sharePane" style="display: none">
           <div class="sc">
             <img id="shareImg" alt="Match result card" />
             <div class="row">
-              <button class="btn" id="btnSend" type="button">Send it</button
-              ><button class="btn alt" id="btnShareClose" type="button">
-                Close
-              </button>
+              <button class="go" id="btnSend" type="button">Send it</button
+              ><button class="btn" id="btnShareClose" type="button">Close</button>
             </div>
           </div>
         </div>
-        <div class="overlay hidden" id="online">
-          <div class="card">
-            <div class="final" id="olTitle">Play online</div>
-            <p class="cmt" id="olMsg"></p>
-            <div class="olcode" id="olCode"></div>
+
+        <!-- Play online -->
+        <div class="overlay scr hidden" id="online">
+          <button class="back" id="olBack" type="button" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2 class="st" id="olTitle">Play online</h2>
+          <div class="body split2">
             <div id="olMain">
-              <div class="row">
-                <button class="btn" id="olCreate" type="button">
-                  Create room
-                </button>
-                <button class="btn" id="olQuick" type="button">
-                  Quick match
-                </button>
-              </div>
-              <div class="row">
-                <input
-                  id="olJoinIn"
-                  class="nameIn olIn"
-                  maxlength="5"
-                  placeholder="Room code"
-                  autocomplete="off"
-                  autocapitalize="characters"
-                  spellcheck="false"
-                />
+              <button class="mode main" id="olQuick" type="button"><b>Quick match</b><span>Find a random opponent</span></button>
+              <div class="lbl">With a friend</div>
+              <div class="row3">
+                <button class="btn" id="olCreate" type="button">Create room</button>
+                <input id="olJoinIn" class="nameIn olIn" maxlength="5" placeholder="Code" aria-label="Room code" autocomplete="off" autocapitalize="characters" spellcheck="false" />
                 <button class="btn" id="olJoin" type="button">Join</button>
               </div>
             </div>
-            <div class="row">
+            <div class="wait">
+              <p class="cmt" id="olMsg"></p>
+              <div class="olcode" id="olCode"></div>
               <button class="btn" id="olCopy" type="button">Copy link</button>
-              <button class="btn alt" id="olBack" type="button">Back</button>
             </div>
           </div>
         </div>
+
+        <!-- Full time -->
         <div class="overlay hidden" id="end">
           <div class="card">
             <div class="final" id="endTitle">Full time</div>
-            <div
-              class="final"
-              id="endScore"
-              style="font-size: max(26px, calc(var(--u) * 56px))"
-            >
-              0 - 0
-            </div>
+            <div class="final big2" id="endScore">0 - 0</div>
             <div class="stats" id="endStats"></div>
             <p class="cmt" id="endCmt"></p>
             <div class="row">
-              <button class="btn" id="btnShare" type="button">Share</button
-              ><button class="btn" id="btnAgain" type="button">Rematch</button
-              ><button class="btn alt" id="btnMenu" type="button">
-                Change settings
-              </button>
+              <button class="go" id="btnAgain" type="button">Rematch</button
+              ><button class="btn" id="btnShare" type="button">Share</button
+              ><button class="btn" id="btnMenu" type="button">Home</button>
             </div>
           </div>
         </div>
@@ -242,21 +204,21 @@
       </p>
     </main>
 
-    <script src="js/00-core.js?v=20261105e"></script>
-    <script src="js/01-content.js?v=20261105e"></script>
-    <script src="js/02-audio.js?v=20261105e"></script>
-    <script src="js/03-world.js?v=20261105e"></script>
-    <script src="js/04-commentary.js?v=20261105e"></script>
-    <script src="js/05-morale-ball.js?v=20261105e"></script>
-    <script src="js/06-powers.js?v=20261105e"></script>
-    <script src="js/07-practice.js?v=20261105e"></script>
-    <script src="js/08-ai.js?v=20261105e"></script>
-    <script src="js/09-control-sim.js?v=20261105e"></script>
-    <script src="js/10-render.js?v=20261105e"></script>
-    <script src="js/11-hud.js?v=20261105e"></script>
-    <script src="js/12-input.js?v=20261105e"></script>
-    <script src="js/13-menu-share.js?v=20261105e"></script>
-    <script src="js/14-main.js?v=20261105e"></script>
-    <script src="js/15-net.js?v=20261105e"></script>
+    <script src="js/00-core.js?v=20261105l"></script>
+    <script src="js/01-content.js?v=20261105l"></script>
+    <script src="js/02-audio.js?v=20261105l"></script>
+    <script src="js/03-world.js?v=20261105l"></script>
+    <script src="js/04-commentary.js?v=20261105l"></script>
+    <script src="js/05-morale-ball.js?v=20261105l"></script>
+    <script src="js/06-powers.js?v=20261105l"></script>
+    <script src="js/07-practice.js?v=20261105l"></script>
+    <script src="js/08-ai.js?v=20261105l"></script>
+    <script src="js/09-control-sim.js?v=20261105l"></script>
+    <script src="js/10-render.js?v=20261105l"></script>
+    <script src="js/11-hud.js?v=20261105l"></script>
+    <script src="js/12-input.js?v=20261105l"></script>
+    <script src="js/13-menu-share.js?v=20261105l"></script>
+    <script src="js/14-main.js?v=20261105l"></script>
+    <script src="js/15-net.js?v=20261105l"></script>
   </body>
 </html>

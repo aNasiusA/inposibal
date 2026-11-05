@@ -98,12 +98,6 @@
           const p = PW[id],
             d = $("pdesc");
           shownId = id;
-          {
-            const bp = $("btnPractice");
-            if (bp)
-              bp.textContent =
-                "Practice " + PW[DRILLS[id] ? id : Object.keys(DRILLS)[0]].name;
-          }
           d.style.setProperty("--pc", p.color);
           d.innerHTML =
             "<b>" +
@@ -154,6 +148,11 @@
             bs = $("btnStart");
           bs.disabled = !ok;
           bs.textContent = ok ? "Kick off" : "Pick 3 powers";
+          const mini = L.map(
+            (id) => '<i style="--pc:' + PW[id].color + '" title="' + PW[id].name + '">' + PW[id].icon + "</i>",
+          ).join("");
+          $("homePow").innerHTML = mini;
+          $("setupPowNames").textContent = L.map((id) => PW[id].name).join(" \u00b7 ") || "None picked";
         }
         const sH = $("sH"),
           sA = $("sA"),

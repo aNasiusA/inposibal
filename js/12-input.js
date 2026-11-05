@@ -37,6 +37,7 @@
           if (demo || state === "ended" || net.on) return;
           paused = v;
           $("pause").classList.toggle("hidden", !v);
+          if (!v) $("settings").classList.add("hidden");
           if (v) {
             input.shootHeld = false;
             cmStop();

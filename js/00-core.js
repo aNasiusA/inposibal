@@ -1,5 +1,13 @@
 "use strict";
         const $ = (id) => document.getElementById(id);
+        const SCREENS = ["menu", "setup", "pickScreen", "settings", "online", "pause", "end"];
+        function hideMenus() {
+          SCREENS.forEach((id) => $(id).classList.add("hidden"));
+        }
+        function showScreen(id) {
+          hideMenus();
+          $(id).classList.remove("hidden");
+        }
         const canvas = $("c"),
           ctx = canvas.getContext("2d"),
           frameEl = $("frame");
