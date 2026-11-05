@@ -15,7 +15,13 @@ export default {
       return new Response("inposibal relay", { status: 200 });
     let m = url.pathname.match(/^\/ws\/room\/([A-Z0-9]{4,6})$/);
     if (m) {
-      const stub = env.ROOM.get(env.ROOM.idFromName(m[1]));
+      // A room is created near whoever opens it first. Players in Africa have no nearby
+      // Durable Object region, so put their rooms in Western Europe (closest to West Africa).
+      const hint = req.cf && req.cf.continent === "AF" ? "weur" : undefined;
+      const stub = env.ROOM.get(
+        env.ROOM.idFromName(m[1]),
+        hint ? { locationHint: hint } : undefined,
+      );
       return stub.fetch(req);
     }
     if (url.pathname === "/ws/queue") {
