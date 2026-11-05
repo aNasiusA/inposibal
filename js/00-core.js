@@ -32,3 +32,17 @@
           ownGoalX = (t) => (t === 0 ? PX0 : PX1),
           oppGoalX = (t) => (t === 0 ? PX1 : PX0);
 
+
+        // online play state (filled in by 15-net.js). on = a 2-human match is running
+        const net = {
+          on: false,
+          role: null,
+          host: false,
+          guest: false,
+          oppName: "Opponent",
+          oppLoadout: [],
+        };
+        // team 0 is always "me" on this client (the guest's view is mirrored)
+        const teamName = (t) => (t.id === 0 ? playerName() : net.oppName);
+        const teamLabel = (t) =>
+          net.on ? teamName(t) + ": " : t.id === 0 ? "You: " : "CPU: ";
