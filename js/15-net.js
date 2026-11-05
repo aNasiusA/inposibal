@@ -5,7 +5,7 @@
    host's snapshots MIRRORED (x flipped, teams swapped) so on the guest's screen the guest
    is always team 0, yellow, attacking to the right, and the HUD/input code is unchanged. */
 // Fill in after `wrangler deploy` (the workers.dev URL printed by the deploy)
-const RELAY_PROD = "wss://inposibal-relay.REPLACE-ME.workers.dev";
+const RELAY_PROD = "wss://relay.anasiusa.dev";
 const RELAY = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
   ? "ws://localhost:8787"
   : RELAY_PROD;
