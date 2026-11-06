@@ -228,6 +228,44 @@
               fnoise(0.03, 0.2, 2000, 800, "bandpass", 1, d);
             });
           },
+          kente() {
+            // a loom's shuttle rhythm, then the cloth unrolling
+            [
+              [392, 0],
+              [494, 0.09],
+              [587, 0.18],
+              [784, 0.3],
+            ].forEach(([f, d]) => {
+              tone(f, 0.18, "triangle", 0.13, 0, d);
+              fnoise(0.05, 0.22, 3200, 1500, "bandpass", 2, d);
+            });
+            fnoise(0.55, 0.3, 380, 2600, "bandpass", 0.8, 0.05);
+          },
+          kenteStretch() {
+            // fabric straining: two detuned groans climbing
+            tone(64, 1.4, "sawtooth", 0.11, 150);
+            tone(67, 1.4, "sawtooth", 0.09, 160);
+            fnoise(1.3, 0.2, 250, 1900, "bandpass", 6);
+          },
+          kenteCreak() {
+            for (let i = 0; i < 6; i++)
+              tone(210 + i * 34, 0.09, "square", 0.05, -60, i * 0.1);
+            fnoise(0.6, 0.14, 1800, 2600, "bandpass", 9);
+          },
+          kenteSnap() {
+            // the whip-crack, the twang and the boom
+            fnoise(0.08, 0.95, 7000, 2000, "highpass", 0.7);
+            tone(1500, 0.3, "sawtooth", 0.16, -1350);
+            tone(220, 0.55, "triangle", 0.18, -150, 0.01);
+            tone(48, 0.8, "sine", 0.9, -16, 0.02);
+            fnoise(0.55, 0.45, 3200, 260, "bandpass", 1, 0.04);
+          },
+          kenteHit() {
+            tone(82, 0.5, "sine", 0.95, -46);
+            fnoise(0.2, 0.7, 1500, 140, "lowpass");
+            tone(1760, 0.7, "sine", 0.07, -260, 0.12);
+            tone(2350, 0.6, "sine", 0.05, -340, 0.2);
+          },
           tackle() {
             tone(95, 0.18, "sine", 0.65, -55);
             fnoise(0.08, 0.38, 1000, 200, "bandpass", 0.8);

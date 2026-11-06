@@ -587,6 +587,7 @@
             ball.y += ball.vy * h;
             ballWalls();
             if (state === "play") {
+              if (kenteCatch()) return;
               ballPlayers();
               if (ball.owner) return;
             }
@@ -675,6 +676,7 @@
             t.rocket = Math.max(0, t.rocket - g);
             t.dumsor = Math.max(0, t.dumsor - g);
             t.sankofa = Math.max(0, t.sankofa - g);
+            t.kente = Math.max(0, t.kente - g);
             t.lock = Math.max(0, t.lock - g);
             if (t.wind) {
               t.wind.t -= g;
@@ -762,6 +764,7 @@
               }
             }
           } else if (state === "rewind") rewindStep();
+          else if (state === "kente") kenteStep(dt);
           else if (state === "play") playUpdate(g);
           else if (state === "goal") {
             stateT -= dt;
@@ -796,6 +799,7 @@
           }
           if (!demo && (state === "play" || state === "goal")) histPush();
           stepFx(g, dt);
+          for (const t of teams) t.kw = Math.max(0, t.kw - dt);
           input.shootUp = false;
           input.slide = false;
           input.passT = Math.max(0, input.passT - dt);

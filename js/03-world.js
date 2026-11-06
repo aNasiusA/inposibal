@@ -75,6 +75,10 @@ function makeTeam(id) {
     wind: null,
     dumsor: 0,
     sankofa: 0,
+    kente: 0,
+    kd: 0,
+    kw: 0,
+    ky: CY,
     lastPass: null,
     pw: {},
     aiTimer: 1.5,
@@ -108,6 +112,7 @@ const ball = {
   lastTeam: 0,
   shot: false,
   noEarn: false,
+  kicker: null,
 };
 let state = "kickoff",
   stateT = 1,
@@ -247,6 +252,8 @@ function resetTeams() {
     t.wind = null;
     t.dumsor = 0;
     t.sankofa = 0;
+    t.kente = t.kd = t.kw = 0;
+    kenteSeq = null;
     t.lastPass = null;
     t.human = !demo && (t.id === 0 || net.on);
     t.loadout =
@@ -264,6 +271,8 @@ function clearEffects() {
     t.wind = null;
     t.dumsor = 0;
     t.sankofa = 0;
+    t.kente = t.kd = t.kw = 0;
+    kenteSeq = null;
     t.lastPass = null;
   });
   for (const p of ALL) {

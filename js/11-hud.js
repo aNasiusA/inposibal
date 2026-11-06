@@ -179,6 +179,8 @@
               return t.players.some((q) => q.dash > 0);
             case "sankofa":
               return t.sankofa > 0;
+            case "kente":
+              return t.kente > 0 || !!(kenteSeq && kenteSeq.tid === t.id);
           }
           return false;
         }
