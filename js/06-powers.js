@@ -55,6 +55,9 @@
               if (!inOwnHalf(t, ball.x))
                 return "Sankofa works when the ball is in your half";
               return pickTarget(t) || "No one free";
+            case "kente":
+              if (t.kente > 0) return "Kente wall is already up";
+              return t.players[0];
           }
           return "Unknown power";
         }
@@ -282,6 +285,280 @@
               for (const q of t.players)
                 if (!q.gk) ring(q.x, q.y, 8, 70, 0.4, def.color);
               break;
+            case "kente":
+              raiseKente(t);
+              break;
           }
         }
 
+
+        /* ---------- Kente wall ---------- */
+        // A cloth across your goal mouth. The next opposing shot sinks into it, the goal goes up, the cloth holds,
+        // then it snaps back: the goal comes off and the ball is fired into whoever kicked it.
+        const KENTE = ["#f2b705", "#0b7a3e", "#f2b705", "#c8102e", "#151515", "#f2b705", "#0b7a3e", "#1d4fa3"],
+          KENTE_UP = 3,
+          K_STRETCH = 0.8,
+          K_HOLD = 0.65,
+          K_SPEED = 1900;
+        let kenteSeq = null,
+          kenteFlash = 0;
+        function kenteSide(tid) {
+          return { line: ownGoalX(tid), sg: tid === 0 ? 1 : -1 };
+        }
+        function raiseKente(t) {
+          const { line, sg } = kenteSide(t.id);
+          t.kente = KENTE_UP;
+          t.kd = 0;
+          t.kw = 0.9;
+          t.ky = CY;
+          for (let y = GY0 + 10; y < GY1; y += 22)
+            burst(line, y, 3, {
+              color: KENTE,
+              s0: 60,
+              s1: 200,
+              l0: 0.4,
+              l1: 0.9,
+              z0: 2.5,
+              z1: 5,
+              a: sg > 0 ? 0 : Math.PI,
+              spread: 1.1,
+              kind: "confetti",
+            });
+          ring(line, CY, 10, 150, 0.6, PW.kente.color);
+        }
+        // called from the ball's sub-steps: the ball has touched an active cloth
+        function kenteCatch() {
+          if (ball.owner || state !== "play") return false;
+          const k = ball.kicker;
+          for (const t of teams) {
+            if (t.kente <= 0 || !k || k.team === t.id) continue;
+            const { line, sg } = kenteSide(t.id);
+            if (ball.y > GY0 && ball.y < GY1 && (ball.x - line) * sg < ball.r) {
+              startKente(t, k);
+              return true;
+            }
+          }
+          return false;
+        }
+        function startKente(t, k) {
+          const { line, sg } = kenteSide(t.id),
+            sp = hyp(ball.vx, ball.vy),
+            sh = teams[k.team];
+          kenteSeq = {
+            tid: t.id,
+            sid: k.team,
+            si: k.idx,
+            ph: 0,
+            T: 0,
+            d0: Math.max(0, ball.r - (ball.x - line) * sg),
+            max: clamp(26 + sp * 0.025, 46, 60),
+            vy: ball.vy * 0.25,
+            hit: false,
+          };
+          state = "kente";
+          t.kente = 0;
+          t.ky = ball.y;
+          t.kd = kenteSeq.d0;
+          ball.fire = 0;
+          ball.vx = ball.vy = 0;
+          ball.owner = null;
+          for (const p of ALL) p.vx = p.vy = 0;
+          timeScale = timeScaleTarget = 0.6;
+          // the goal goes up
+          sh.score++;
+          SFX.goal();
+          SFX.kenteStretch();
+          setBig("GOAL!", sh.color);
+          roar(k.team === 0 ? "goal" : "groan");
+          cmStop();
+          say(k.team === 0 ? "goal_you" : "goal_cpu", 3);
+          shake = Math.max(shake, reduceMotion ? 2 : 9);
+          burst(line, ball.y, 26, {
+            color: [sh.color, "#fff", "#ffc61a"],
+            kind: "confetti",
+            s0: 80,
+            s1: 360,
+            l0: 0.8,
+            l1: 1.6,
+            z0: 4,
+            z1: 7,
+            g: 300,
+            drag: 1,
+            a: sg > 0 ? 0 : Math.PI,
+            spread: 1.2,
+          });
+        }
+        const easeOut = (x) => 1 - Math.pow(1 - x, 3);
+        function kenteStep(dt) {
+          const K = kenteSeq;
+          if (!K) {
+            state = "play";
+            return;
+          }
+          const t = teams[K.tid],
+            { line, sg } = kenteSide(K.tid),
+            shooter = teams[K.sid].players[K.si];
+          K.T += dt;
+          if (K.ph === 0) {
+            // stretch: the ball sinks deep into the cloth and slows to nothing
+            const f = Math.min(1, K.T / K_STRETCH),
+              d = lerp(K.d0, K.max, easeOut(f));
+            K.vy *= Math.exp(-5 * dt);
+            ball.y = clamp(ball.y + K.vy * dt, GY0 + ball.r + 6, GY1 - ball.r - 6);
+            t.ky = ball.y;
+            t.kd = d;
+            ball.x = line - sg * (d - ball.r);
+            ball.rot += dt * 30 * (1 - f);
+            if (Math.random() < 0.6)
+              burst(ball.x, ball.y, 1, {
+                color: KENTE,
+                s0: 20,
+                s1: 90,
+                l0: 0.3,
+                l1: 0.6,
+                z0: 1.5,
+                z1: 3,
+              });
+            if (f >= 1) {
+              K.ph = 1;
+              K.T = 0;
+              setBig("GOAL...?", teams[K.sid].color);
+              SFX.kenteCreak();
+              timeScale = timeScaleTarget = 0.35;
+            }
+          } else if (K.ph === 1) {
+            // hold: the cloth trembles at full stretch, everything waits
+            const f = Math.min(1, K.T / K_HOLD);
+            t.kd = K.max + Math.sin(K.T * 70) * (1.2 + f * 2.8);
+            ball.x = line - sg * (t.kd - ball.r);
+            shake = Math.max(shake, reduceMotion ? 0 : 1 + f * 3);
+            if (f >= 1) kenteSnap(K, t, line, sg, shooter);
+          } else {
+            // fly: straight back at whoever kicked it
+            const tx = shooter ? shooter.x : CX,
+              ty = shooter ? shooter.y : CY,
+              dx = tx - ball.x,
+              dy = ty - ball.y,
+              d = hyp(dx, dy),
+              rr = (shooter ? shooter.r : 0) + ball.r;
+            if (d <= rr || K.T > 1.6) {
+              kenteImpact(K, t, shooter, dx / (d || 1), dy / (d || 1));
+              return;
+            }
+            const step = Math.min(d - rr + 0.01, K_SPEED * dt),
+              nx = dx / d,
+              ny = dy / d;
+            for (let s = 0; s < step; s += 14)
+              burst(ball.x + nx * s, ball.y + ny * s, 2, {
+                color: KENTE,
+                s0: 10,
+                s1: 70,
+                l0: 0.35,
+                l1: 0.7,
+                z0: 2.5,
+                z1: 5.5,
+                drag: 3,
+              });
+            ball.x += nx * step;
+            ball.y += ny * step;
+            ball.vx = nx * K_SPEED;
+            ball.vy = ny * K_SPEED;
+            ball.rot += dt * 60;
+          }
+        }
+        function kenteSnap(K, t, line, sg, shooter) {
+          const sh = teams[K.sid];
+          K.ph = 2;
+          K.T = 0;
+          sh.score = Math.max(0, sh.score - 1);
+          t.kd = 0;
+          t.kw = 1.3;
+          kenteFlash = 1;
+          timeScale = timeScaleTarget = 1;
+          ball.x = line + sg * (ball.r + 4);
+          SFX.kenteSnap();
+          setBig("NO GOAL!", PW.kente.color, 1500);
+          showBanner(
+            teamLabel(t) + "KENTE WALL! Sent back to sender!",
+            PW.kente.color,
+            2400,
+          );
+          cmStop();
+          say("save", 3);
+          roar(t.id === 0 ? "goal" : "groan");
+          shake = Math.max(shake, reduceMotion ? 3 : 18);
+          ring(line, t.ky, 8, 200, 0.55, PW.kente.color);
+          ring(line, t.ky, 8, 120, 0.4, "#fff");
+          burst(line, t.ky, 40, {
+            color: KENTE,
+            kind: "confetti",
+            s0: 120,
+            s1: 520,
+            l0: 0.6,
+            l1: 1.3,
+            z0: 3,
+            z1: 7,
+            drag: 1.4,
+            a: sg > 0 ? 0 : Math.PI,
+            spread: 1.3,
+          });
+          if (shooter) {
+            ring(shooter.x, shooter.y, shooter.r + 50, shooter.r + 4, 0.3, "#fff");
+            floatText(shooter.x, shooter.y - shooter.r - 18, "INCOMING!", "#fff");
+          }
+        }
+        function kenteImpact(K, t, p, nx, ny) {
+          kenteSeq = null;
+          state = "play";
+          kenteFlash = Math.max(kenteFlash, 0.6);
+          ball.fire = 0;
+          ball.shot = false;
+          ball.noEarn = true;
+          ball.kicker = null;
+          ball.lastTeam = t.id;
+          if (p) {
+            p.stun = Math.max(p.stun, 3);
+            p.slide = 0;
+            p.dash = 0;
+            p.charge = 0;
+            p.pickupLock = Math.max(p.pickupLock, 1.2);
+            p.x = clamp(p.x + nx * 22, PX0 + p.r, PX1 - p.r);
+            p.y = clamp(p.y + ny * 22, PY0 + p.r, PY1 - p.r);
+            // it pops off sideways and on away from your goal, never back into it
+            const side = Math.random() < 0.5 ? 1 : -1,
+              [bx, by] = norm(-ny * side * 0.8 + nx * 0.5, nx * side * 0.8 + ny * 0.5);
+            ball.x = clamp(p.x + bx * (p.r + ball.r + 2), PX0 + ball.r, PX1 - ball.r);
+            ball.y = clamp(p.y + by * (p.r + ball.r + 2), PY0 + ball.r, PY1 - ball.r);
+            ball.vx = bx * 380;
+            ball.vy = by * 380;
+            burst(p.x, p.y, 34, {
+              color: KENTE,
+              s0: 120,
+              s1: 460,
+              l0: 0.4,
+              l1: 1,
+              z0: 3,
+              z1: 6,
+            });
+            burst(p.x, p.y, 10, {
+              color: "#fff",
+              s0: 200,
+              s1: 600,
+              l0: 0.15,
+              l1: 0.35,
+              z0: 2,
+              z1: 4,
+            });
+            ring(p.x, p.y, p.r, p.r + 90, 0.5, PW.kente.color);
+            ring(p.x, p.y, p.r, p.r + 50, 0.35, "#fff");
+            floatText(p.x, p.y - p.r - 16, "KNOCKED OUT!", "#ffd166");
+          } else {
+            ball.vx = ball.vy = 0;
+          }
+          SFX.kenteHit();
+          shake = Math.max(shake, reduceMotion ? 3 : 20);
+          timeScale = 0.2;
+          timeScaleTarget = 1;
+          earn(t, "save", 10, t.players[0]);
+          if (drill) drillEvent("kente");
+        }

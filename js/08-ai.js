@@ -335,6 +335,17 @@
             magnet: () =>
               !o && sp > 250 && ball.lastTeam !== t.id && mateDist < 170,
             sankofa: () => !myHas && inOwnHalf(t, ball.x) && goalSide < 2,
+            kente: () => {
+              if (t.kente > 0) return false;
+              const gd = (x) => Math.abs(x - ownGoalX(t.id));
+              if (oppHas) return gd(o.x) < 360 && Math.abs(o.y - CY) < 220;
+              return (
+                !o &&
+                ball.lastTeam !== t.id &&
+                ball.vx * attackDir(t.id) < -350 &&
+                gd(ball.x) < 600
+              );
+            },
           };
           const order = t.loadout.slice().sort(() => Math.random() - 0.5);
           for (const id of order) {

@@ -770,6 +770,76 @@
               } else if (s === "shot" && d.t > 4) this.B(d, "Try again.");
             },
           },
+          kente: {
+            setup() {
+              drillScene({
+                you: [PX0 + 430, CY + 170],
+                mine: [
+                  [PX0 + 520, CY - 190],
+                  [PX0 + 600, CY + 60],
+                ],
+                opp: [[PX0 + 330, CY - 40]],
+                give: 0,
+              });
+              teams[0].players[0].y = GY0 - 40;
+              teams[0].players[0].stun = 4;
+            },
+            start(d) {
+              this.use(d);
+            },
+            use(d) {
+              drillGo(d, "use");
+              pulse(true);
+              coach(
+                "Your keeper is down!",
+                "They are clean through. " +
+                  usePrompt() +
+                  " to hang the Kente wall across your goal.",
+              );
+            },
+            event(d, n, a) {
+              if (n === "kente")
+                drillWin(
+                  d,
+                  "Sent back to sender!",
+                  "Kente wall hangs across your goal for 3s. The next shot that goes in stretches it, the goal flashes up, then the cloth snaps back: no goal, and the shooter is knocked out for 3s.",
+                );
+              else if (n === "goal" && a === 1)
+                drillRetry(
+                  d,
+                  "It went in",
+                  "Put the wall up before they shoot.",
+                  "use",
+                );
+            },
+            tick(d) {
+              const t = teams[0],
+                s = d.step;
+              t.players[0].stun = Math.max(t.players[0].stun, 1);
+              if (s === "use") {
+                if (t.wind || t.kente > 0) {
+                  drillGo(d, "up");
+                  pulse(false);
+                  coach(
+                    "The cloth is up",
+                    "Now watch what happens when they shoot...",
+                    PW.kente.color,
+                  );
+                } else if (d.t > 5) {
+                  const q = teams[1].players[1];
+                  shoot(q, 0.9, PX0 - q.x, CY - q.y);
+                  drillGo(d, "late");
+                }
+              } else if (s === "up") {
+                if (d.t > 0.9 && ball.owner && ball.owner.team === 1) {
+                  const q = ball.owner;
+                  shoot(q, 0.95, PX0 - q.x, CY + 30 - q.y);
+                  drillGo(d, "shot");
+                }
+              } else if ((s === "shot" || s === "late") && d.t > 4)
+                drillRetry(d, "Try again", "Put the wall up before they shoot.", "use");
+            },
+          },
         };
         function practiceFor(id) {
           const k = DRILLS[id] ? id : Object.keys(DRILLS)[0];

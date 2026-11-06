@@ -473,6 +473,7 @@ function sendSnap() {
     ro: r2(t.rocket),
     du: r2(t.dumsor),
     sa: r2(t.sankofa),
+    ke: [r2(t.kente), r2(t.kd), r2(t.kw), r2(t.ky)],
     lk: r2(t.lock),
     pw: t.pw,
     lu: t.lastUse,
@@ -507,6 +508,7 @@ function sendSnap() {
       gu: goalUndone ? 1 : 0,
       kt: kickTeam,
       sc: r2(simClock),
+      kq: kenteSeq ? [kenteSeq.tid, kenteSeq.ph] : null,
     },
   };
   if (direct) {
@@ -550,6 +552,8 @@ function applyDiscrete(s) {
   goalUndone = !!g.gu;
   kickTeam = 1 - g.kt;
   simClock = g.sc;
+  if (g.kq && g.kq[1] === 2 && !(kenteSeq && kenteSeq.ph === 2)) kenteFlash = 1;
+  kenteSeq = g.kq ? { tid: 1 - g.kq[0], ph: g.kq[1] } : null;
   for (let h = 0; h < 2; h++) {
     const L = teams[1 - h],
       d = s.tm[h];
@@ -558,6 +562,7 @@ function applyDiscrete(s) {
     L.rocket = d.ro;
     L.dumsor = d.du;
     L.sankofa = d.sa;
+    if (d.ke) [L.kente, L.kd, L.kw, L.ky] = d.ke;
     L.lock = d.lk;
     L.pw = d.pw;
     L.lastUse = d.lu;

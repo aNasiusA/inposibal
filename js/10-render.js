@@ -582,6 +582,160 @@
           ctx.setTransform(1, 0, 0, 1, 0, 0);
           ctx.drawImage(darkLayer, 0, 0);
         }
+        // Kente wall: a woven band across the goal mouth that pockets around the ball and whips back
+        function kenteDepth(t, y, live) {
+          const span = GY1 - GY0,
+            u = (y - GY0) / span,
+            post = Math.sin(clamp(u, 0, 1) * Math.PI);
+          let d = Math.sin(time * 4.2 + y * 0.07) * 2.2 * post;
+          if (t.kd > 0) {
+            const ky = clamp(t.ky, GY0 + 12, GY1 - 12),
+              s = y < ky ? (y - GY0) / (ky - GY0) : (GY1 - y) / (GY1 - ky);
+            d += t.kd * Math.pow(Math.sin(clamp(s, 0, 1) * Math.PI * 0.5), 1.5);
+          }
+          if (t.kw > 0) {
+            const tau = 1.3 - t.kw,
+              ky = clamp(t.ky, GY0 + 12, GY1 - 12),
+              s = y < ky ? (y - GY0) / (ky - GY0) : (GY1 - y) / (GY1 - ky);
+            d -= 46 * Math.exp(-3.6 * tau) * Math.cos(17 * tau) * Math.sin(clamp(s, 0, 1) * Math.PI * 0.5) *
+              (live ? 0.5 : 1);
+          }
+          return d;
+        }
+        function drawKente() {
+          for (const t of teams) {
+            const winding = t.wind && t.wind.id === "kente",
+              seq = kenteSeq && kenteSeq.tid === t.id,
+              live = t.kente > 0;
+            if (!winding && !seq && !live && t.kd <= 0 && t.kw <= 0) continue;
+            const line = ownGoalX(t.id),
+              sg = t.id === 0 ? 1 : -1;
+            let a = 1,
+              open = 1;
+            if (winding) {
+              const f = 1 - t.wind.t / t.wind.max;
+              open = easeOut(f);
+              a = 0.4 + 0.6 * f;
+            } else if (live && t.kente < 1 && !seq)
+              a = (Math.sin(t.kente * 40) > 0 ? 1 : 0.4) * Math.max(0.25, t.kente);
+            else if (!live && !seq) a = Math.min(1, t.kw * 3);
+            const N = 26,
+              cy = (GY0 + GY1) / 2,
+              half = ((GY1 - GY0) / 2) * open,
+              stretch = clamp(t.kd / 58, 0, 1),
+              th = 15 - stretch * 5,
+              pts = [];
+            for (let i = 0; i <= N; i++) {
+              const y = cy - half + (2 * half * i) / N;
+              pts.push([line - sg * kenteDepth(t, y, live), y]);
+            }
+            ctx.save();
+            ctx.globalAlpha = a;
+            // the pocket the cloth makes behind the line
+            if (t.kd > 4) {
+              ctx.fillStyle = "rgba(242,183,5," + (0.16 + stretch * 0.3).toFixed(3) + ")";
+              ctx.beginPath();
+              ctx.moveTo(line, GY0);
+              for (const [x, y] of pts) ctx.lineTo(x, y);
+              ctx.lineTo(line, GY1);
+              ctx.closePath();
+              ctx.fill();
+            }
+            ctx.shadowColor = stretch > 0.3 ? "#ffd166" : "rgba(34,179,94,.9)";
+            ctx.shadowBlur = 10 + stretch * 26 + (seq && kenteSeq.ph === 1 ? Math.sin(time * 40) * 6 + 6 : 0);
+            ctx.fillStyle = "#151515";
+            ctx.beginPath();
+            for (let i = 0; i <= N; i++) ctx.lineTo(pts[i][0] + (sg * th) / 2 + sg, pts[i][1]);
+            for (let i = N; i >= 0; i--) ctx.lineTo(pts[i][0] - (sg * th) / 2 - sg, pts[i][1]);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            // woven blocks: alternating strips with a contrasting thread down the middle
+            for (let i = 0; i < N; i++) {
+              const [x0, y0] = pts[i],
+                [x1, y1] = pts[i + 1],
+                c = KENTE[i % KENTE.length],
+                h = th / 2;
+              ctx.fillStyle = c;
+              ctx.beginPath();
+              ctx.moveTo(x0 + sg * h, y0);
+              ctx.lineTo(x1 + sg * h, y1);
+              ctx.lineTo(x1 - sg * h, y1);
+              ctx.lineTo(x0 - sg * h, y0);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = i % 2 ? "#f2b705" : "#151515";
+              const q = h * 0.35,
+                my0 = lerp(y0, y1, 0.2),
+                my1 = lerp(y0, y1, 0.8),
+                mx0 = lerp(x0, x1, 0.2),
+                mx1 = lerp(x0, x1, 0.8);
+              ctx.beginPath();
+              ctx.moveTo(mx0 + sg * q, my0);
+              ctx.lineTo(mx1 + sg * q, my1);
+              ctx.lineTo(mx1 - sg * q, my1);
+              ctx.lineTo(mx0 - sg * q, my0);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // tension: bright threads along the cloth while it is pulled tight
+            if (stretch > 0.15) {
+              ctx.strokeStyle = "rgba(255,240,200," + (stretch * 0.8).toFixed(3) + ")";
+              ctx.lineWidth = 1.2;
+              for (const off of [-th / 2, th / 2]) {
+                ctx.beginPath();
+                for (const [x, y] of pts) ctx.lineTo(x + sg * off, y);
+                ctx.stroke();
+              }
+            }
+            // knots tying it to the posts
+            for (const y of [cy - half, cy + half]) {
+              ctx.fillStyle = "#f2b705";
+              ctx.beginPath();
+              ctx.arc(line, y, 5.5, 0, TAU);
+              ctx.fill();
+              ctx.fillStyle = "#c8102e";
+              ctx.beginPath();
+              ctx.arc(line, y, 2.6, 0, TAU);
+              ctx.fill();
+            }
+            ctx.restore();
+          }
+        }
+        // cinematic framing during the catch: push in on the goal, letterbox, and a flash on the snap
+        let kenteZoom = 0;
+        function kenteCam() {
+          const K = kenteSeq,
+            want = state === "kente" && K ? (K.ph < 2 ? 1 : 0.15) : 0;
+          kenteZoom += (want - kenteZoom) * (want > kenteZoom ? 0.06 : 0.14);
+          if (kenteZoom < 0.002) kenteZoom = 0;
+          return K ? K.tid : kenteZoom > 0 ? kenteLastTid : 0;
+        }
+        let kenteLastTid = 0;
+        function drawKenteOverlay() {
+          if (kenteZoom <= 0 && kenteFlash <= 0) return;
+          const w = canvas.width,
+            h = canvas.height;
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          if (kenteZoom > 0) {
+            const g = ctx.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, w * 0.7);
+            g.addColorStop(0, "rgba(0,0,0,0)");
+            g.addColorStop(1, "rgba(8,4,20," + (0.55 * kenteZoom).toFixed(3) + ")");
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, w, h);
+            const bar = h * 0.085 * kenteZoom;
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, w, bar);
+            ctx.fillRect(0, h - bar, w, bar);
+          }
+          if (kenteFlash > 0) {
+            ctx.fillStyle = "rgba(255,236,170," + (0.55 * kenteFlash * kenteFlash).toFixed(3) + ")";
+            ctx.fillRect(0, 0, w, h);
+            kenteFlash = Math.max(0, kenteFlash - 0.06);
+          }
+          ctx.restore();
+        }
         function render() {
           if (!pitchLayer) buildPitch();
           const cs = canvas.width / W;
@@ -595,9 +749,20 @@
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.save();
           ctx.translate(sx * cs, sy * cs);
+          const ktid = kenteCam();
+          if (kenteSeq) kenteLastTid = kenteSeq.tid;
+          if (kenteZoom > 0 && !reduceMotion) {
+            const z = 1 + 0.22 * kenteZoom,
+              fx = lerp(CX, ktid === 0 ? 0 : W, kenteZoom),
+              fy = lerp(CY, teams[ktid].ky, kenteZoom * 0.6);
+            ctx.translate(fx * cs, fy * cs);
+            ctx.scale(z, z);
+            ctx.translate(-fx * cs, -fy * cs);
+          }
           ctx.drawImage(pitchLayer, 0, 0);
           ctx.scale(cs, cs);
           drawLanes();
+          drawKente();
           const order = ALL.slice().sort((a, b) => a.y - b.y);
           if (ball.owner && ball.owner.y > ball.y) drawBall();
           for (const p of order) {
@@ -611,5 +776,6 @@
           ctx.restore();
           drawDumsor(sx, sy);
           drawRewind();
+          drawKenteOverlay();
         }
 

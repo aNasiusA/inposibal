@@ -104,6 +104,7 @@
           p.charge = 0;
           p.aiRel = 0;
           ball.lastTeam = p.team;
+          ball.kicker = p;
           ball.shot = false;
           ball.noEarn = false;
           teams[p.team].lastPass = null;
@@ -236,6 +237,7 @@
           p.protect = 0.7;
           p.aiRel = 0;
           ball.fire = 0;
+          ball.kicker = null;
           const t = teams[p.team];
           if (t.sankofa > 0) t.sankofa = 0;
         }
