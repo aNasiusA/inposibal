@@ -562,3 +562,60 @@
           earn(t, "save", 10, t.players[0]);
           if (drill) drillEvent("kente");
         }
+
+        // juju against the wall: a quick stretch and snap per ball, then it flies home and flattens whoever cast it
+        function kenteJujuBlock(b) {
+          const t = teams[0];
+          juju.blocked = true;
+          b.back = true;
+          b.t = 0;
+          b.dur = 0.4;
+          b.sx = b.x;
+          b.sy = b.y;
+          b.tx = b.q ? b.q.x : CX;
+          b.ty = b.q ? b.q.y : CY;
+          t.ky = b.y;
+          t.kd = 0;
+          t.kw = 1.3;
+          t.kente = Math.max(t.kente, 0.4);
+          kenteFlash = Math.max(kenteFlash, 0.7);
+          SFX.kenteSnap();
+          setBig("BLOCKED!", PW.kente.color, 1200);
+          showBanner("You: KENTE WALL! Juju sent back!", PW.kente.color, 2200);
+          roar("goal");
+          shake = Math.max(shake, reduceMotion ? 2 : 14);
+          ring(PX0, b.y, 8, 170, 0.5, PW.kente.color);
+          ring(PX0, b.y, 8, 90, 0.35, "#b86bff");
+          burst(PX0, b.y, 30, {
+            color: [...KENTE, "#b86bff", "#e6d0ff"],
+            kind: "confetti",
+            s0: 100,
+            s1: 460,
+            l0: 0.5,
+            l1: 1.1,
+            z0: 3,
+            z1: 6,
+            a: 0,
+            spread: 1.3,
+          });
+          floatText(PX0 + 60, b.y, "NO JUJU", PW.kente.color);
+        }
+        function kenteJujuHit(b) {
+          const p = b.q;
+          SFX.kenteHit();
+          shake = Math.max(shake, reduceMotion ? 2 : 12);
+          if (!p) return;
+          p.stun = Math.max(p.stun, 3);
+          p.slide = p.dash = 0;
+          burst(p.x, p.y, 26, {
+            color: [...KENTE, "#b86bff"],
+            s0: 120,
+            s1: 420,
+            l0: 0.4,
+            l1: 0.9,
+            z0: 3,
+            z1: 6,
+          });
+          ring(p.x, p.y, p.r, p.r + 70, 0.45, PW.kente.color);
+          floatText(p.x, p.y - p.r - 16, "KNOCKED OUT!", "#ffd166");
+        }

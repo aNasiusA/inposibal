@@ -177,6 +177,10 @@
             c.font = "46px " + F;
             c.fillStyle = "#b86bff";
             c.fillText("CPU USED JUJU", W2 / 2, 640);
+          } else if (m.kj) {
+            c.font = "46px " + F;
+            c.fillStyle = "#22b35e";
+            c.fillText("KENTE WALL BLOCKED THE JUJU", W2 / 2, 640);
           } else if (m.rev) {
             c.font = "40px " + F;
             c.fillStyle = "#e0b04a";

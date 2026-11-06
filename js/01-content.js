@@ -94,7 +94,7 @@
             wind: 0.35,
             color: "#22b35e",
             blurb:
-              "A woven kente cloth goes up across your goal for 3s. The next shot that goes in stretches it deep and the goal goes up... then the cloth snaps back, the goal comes off, and the ball is fired straight into the shooter, knocking them out for 3s.",
+              "A woven kente cloth goes up across your goal for 3s. The next shot that goes in stretches it deep and the goal goes up... then the cloth snaps back, the goal comes off, and the ball is fired straight into the shooter, knocking them out for 3s. It even stops juju.",
             icon: '<svg viewBox="0 0 24 24"><path d="M3 4h18v16H3z" opacity=".3"/><path d="M3 4h4.5v4H3zM12 4h4.5v4H12zM7.5 8H12v4H7.5zM16.5 8H21v4h-4.5zM3 12h4.5v4H3zM12 12h4.5v4H12zM7.5 16H12v4H7.5zM16.5 16H21v4h-4.5z"/></svg>',
           },
         ];
