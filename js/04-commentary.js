@@ -365,7 +365,7 @@
         function jujuReset() {
           goalLog = [];
           reversals = 0;
-          juju.used = false;
+          juju.used = juju.blocked = false;
           juju.rolled = juju.active = false;
           juju.balls = [];
           juju.landed = 0;
@@ -395,9 +395,18 @@
               y: q.y,
               done: false,
               rot: 0,
+              q,
+              back: false,
             });
           }
-          showBanner("CPU: JUJU!", "#b86bff", 2400);
+          const wall =
+            h.loadout.includes("kente") &&
+            (h.kente > 0 || (h.pw.kente <= 0 && h.morale >= powerCost(h, "kente")));
+          showBanner(
+            wall ? "CPU: JUJU! Raise the Kente wall!" : "CPU: JUJU!",
+            "#b86bff",
+            2400,
+          );
           setBig("JUJU!", "#b86bff", 1400);
           cmStop();
           say("juju", 3);
@@ -429,6 +438,19 @@
                 l0: 0.3,
                 l1: 0.6,
               });
+            if (b.back) {
+              if (k >= 1) {
+                b.done = true;
+                kenteJujuHit(b);
+              }
+              continue;
+            }
+            // the Kente wall catches juju too: the ball bounces off the cloth and goes back to its caster
+            if (k >= 0.86 && teams[0].kente > 0) {
+              juju.landed++;
+              kenteJujuBlock(b);
+              continue;
+            }
             if (k >= 1) {
               b.done = true;
               juju.landed++;
@@ -525,7 +547,15 @@
             P = [],
             add = (...x) => P.push(...x);
           const lens = settings.len;
-          if (juju.used) {
+          if (juju.used && juju.blocked && d > 0) {
+            add(
+              "The CPU sent JUJU. " + n + " sent it back, gift-wrapped in kente.",
+              "Spiritual attack, woven defence. The ancestors approve.",
+              "JUJU met Kente and lost. Culture beats witchcraft.",
+              "The CPU called the village elders. " + n + " called the weavers.",
+              "No juju can pass a properly woven cloth. Ask any grandmother.",
+            );
+          } else if (juju.used) {
             add(
               "The CPU used JUJU. " +
                 n +
@@ -787,7 +817,8 @@
             diff: settings.diff,
             len: settings.len,
             goals: goalLog.slice(),
-            juju: juju.used,
+            juju: juju.used && !(juju.blocked && teams[0].score > teams[1].score),
+            kj: !!(juju.used && juju.blocked && teams[0].score > teams[1].score),
             rev: reversals,
             cmt: lastCmt,
           };
