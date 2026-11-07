@@ -687,6 +687,11 @@ h2 {
 #setup .go { margin-top: auto; width: 100%; }
 /* powers */
 .plist { flex: 1.1; display: grid; grid-template-columns: 1fr 1fr; gap: .8em; align-content: start; }
+.plist .pgrp { grid-column: 1 / -1; display: flex; align-items: baseline; gap: .6em; margin: .6em 0 -.2em; padding-bottom: .3em; border-bottom: 1px solid #3a2f74; }
+.plist .pgrp:first-child { margin-top: 0; }
+.plist .pgrp b { font-size: .95em; letter-spacing: .08em; text-transform: uppercase; color: #fff; }
+.plist .pgrp span { font-size: .85em; color: #a99fd6; }
+.plist .pgrp-heavy b { color: var(--y, #ffd166); }
 .plist button { position: relative; display: flex; align-items: center; gap: .8em; text-align: left; min-height: 4.8em; padding: 0 1em; border-radius: 1.1em; border: 1px solid #3a2f74; background: rgba(255,255,255,.05); color: #f4f1ff; font-size: 1em; cursor: pointer; }
 .plist button[aria-pressed="true"] { border: 2px solid var(--pc); background: rgba(255,255,255,.12); }
 .plist button > span:nth-child(2) { display: block; min-width: 0; }

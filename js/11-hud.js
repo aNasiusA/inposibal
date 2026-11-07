@@ -65,7 +65,19 @@
         function buildPicker() {
           const list = $("plist");
           list.innerHTML = "";
-          POWERS.forEach((p) => {
+          const GROUPS = [
+            ["heavy", "Heavy", "Big effect, 40 Morale. Only 1 allowed."],
+            ["medium", "Medium", "25 Morale each."],
+            ["light", "Light", "15 Morale each. Cheap and quick."],
+          ];
+          GROUPS.forEach(([tier, title, note]) => {
+            const h = document.createElement("div");
+            h.className = "pgrp pgrp-" + tier;
+            h.innerHTML = "<b>" + title + "</b><span>" + note + "</span>";
+            list.appendChild(h);
+            POWERS.filter((p) => p.tier === tier).forEach(addCard);
+          });
+          function addCard(p) {
             const b = document.createElement("button");
             b.type = "button";
             b.style.setProperty("--pc", p.color);
@@ -89,7 +101,7 @@
               togglePick(p.id);
             });
             list.appendChild(b);
-          });
+          }
           showDesc(POWERS[0].id);
           syncPicks();
         }
@@ -103,6 +115,8 @@
             "<b>" +
             p.name +
             "</b><em>" +
+            p.tier[0].toUpperCase() + p.tier.slice(1) +
+            " \u00b7 " +
             p.cat +
             " \u00b7 " +
             TIER[p.tier] +
