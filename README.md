@@ -19,7 +19,7 @@ Before kick-off you pick a loadout of powers. Each one costs **Morale**, which y
 | **Obolo** | Win shoulder-to-shoulder battles and hold the ball under pressure, at the cost of speed. |
 | **Ball magnet** | A sticky first touch that traps loose balls from further away. |
 | **Sankofa** | Rewind. Send your team sprinting back, or reverse a goal you just conceded. |
-| **Kente wall** | Put up a wall to block the opposition. |
+| **Kente wall** | A cloth stretches across your goal. It catches a shot, fakes the goal, then snaps back and stuns the shooter. It also bounces powers back at whoever cast them. |
 
 ## Modes
 
